@@ -1,24 +1,26 @@
 /**
- * Purpose: API entrypoint for Cloudflare Worker (local + deploy).
- * Direct dependencies: none (pure fetch handler).
- * Inputs/Outputs: HTTP Request -> HTTP Response (JSON/plain text).
- * Security: no auth yet; exposes only public health endpoint.
- * Notes: keep minimal; later we’ll add routing + auth + org_id.
+ * Purpose: API entrypoint and router.
+ * Direct dependencies: feature controllers.
+ * Inputs/Outputs: HTTP Request -> HTTP Response.
+ * Security: Public router for now. Later will enforce org_id + RBAC.
+ * Notes: Keep routing centralized; feature code stays in modules/.
  */
+import { handleHealth } from "./modules/health/controller";
+
 export default {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/health") {
-  return new Response(JSON.stringify({ ok: true, service: "api" }), {
-    headers: {
-      "content-type": "application/json",
-      "access-control-allow-origin": "*",
-    },
-  });
-}
+    // Public health (v1)
+    if (url.pathname === "/v1/health") {
+      return handleHealth();
+    }
 
-    // Default
+    // Backward compat (temporary): keep old /health working
+    if (url.pathname === "/health") {
+      return handleHealth();
+    }
+
     return new Response("Not found", { status: 404 });
   },
 };
