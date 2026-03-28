@@ -4,7 +4,7 @@ export default function App() {
   const [status, setStatus] = useState("Carico...");
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8787/health")
+    fetch("https://api.stemoro84.workers.dev/health")
       .then((r) => r.json())
       .then((data) => setStatus(JSON.stringify(data)))
       .catch((err) => setStatus("Errore: " + String(err)));
