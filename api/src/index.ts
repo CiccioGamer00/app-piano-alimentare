@@ -6,19 +6,22 @@
  * Notes: Keep routing centralized; feature code stays in modules/.
  */
 import { handleHealth } from "./modules/health/controller";
+import { handleDbCheck } from "./modules/db/controller";
+
+type Env = {
+  DATABASE_URL: string;
+};
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Public health (v1)
-    if (url.pathname === "/v1/health") {
+    if (url.pathname === "/v1/health" || url.pathname === "/health") {
       return handleHealth();
     }
 
-    // Backward compat (temporary): keep old /health working
-    if (url.pathname === "/health") {
-      return handleHealth();
+    if (url.pathname === "/v1/db-check") {
+      return await handleDbCheck(env);
     }
 
     return new Response("Not found", { status: 404 });
