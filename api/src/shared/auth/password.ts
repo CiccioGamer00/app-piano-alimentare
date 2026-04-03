@@ -6,7 +6,7 @@
  * Notes: Uses PBKDF2 with SHA-256 and a random salt. Stored format is versioned for future changes.
  */
 
-const ITERATIONS = 210_000;
+const ITERATIONS = 100_000;
 const SALT_LENGTH = 16;
 
 function toBase64(bytes: Uint8Array): string {

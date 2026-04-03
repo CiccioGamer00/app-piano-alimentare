@@ -35,6 +35,20 @@ import {
   handleListMealPlanTemplates,
   handleUpdateMealPlanTemplate,
 } from "./modules/meal-plan-templates/controller";
+import {
+  handleCreateMealPlanTemplateDay,
+  handleCreateMealPlanTemplateItem,
+  handleCreateMealPlanTemplateMeal,
+  handleDeleteMealPlanTemplateDay,
+  handleDeleteMealPlanTemplateItem,
+  handleDeleteMealPlanTemplateMeal,
+  handleListMealPlanTemplateDays,
+  handleListMealPlanTemplateItems,
+  handleListMealPlanTemplateMeals,
+  handleUpdateMealPlanTemplateDay,
+  handleUpdateMealPlanTemplateItem,
+  handleUpdateMealPlanTemplateMeal,
+} from "./modules/meal-plan-templates/structure-controller";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -107,13 +121,110 @@ export default {
 
       return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
     }
-		    if (url.pathname === "/v1/meal-plan-templates") {
+
+    if (url.pathname === "/v1/meal-plan-templates") {
       if (request.method === "POST") {
         return await handleCreateMealPlanTemplate(request, env);
       }
 
       if (request.method === "GET") {
         return await handleListMealPlanTemplates(request, env);
+      }
+
+      return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+    }
+
+    if (
+      url.pathname.match(
+        /^\/v1\/meal-plan-templates\/[^/]+\/days$/
+      )
+    ) {
+      if (request.method === "POST") {
+        return await handleCreateMealPlanTemplateDay(request, env);
+      }
+
+      if (request.method === "GET") {
+        return await handleListMealPlanTemplateDays(request, env);
+      }
+
+      return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+    }
+
+    if (
+      url.pathname.match(
+        /^\/v1\/meal-plan-templates\/[^/]+\/days\/[^/]+$/
+      )
+    ) {
+      if (request.method === "PATCH") {
+        return await handleUpdateMealPlanTemplateDay(request, env);
+      }
+
+      if (request.method === "DELETE") {
+        return await handleDeleteMealPlanTemplateDay(request, env);
+      }
+
+      return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+    }
+
+    if (
+      url.pathname.match(
+        /^\/v1\/meal-plan-templates\/[^/]+\/days\/[^/]+\/meals$/
+      )
+    ) {
+      if (request.method === "POST") {
+        return await handleCreateMealPlanTemplateMeal(request, env);
+      }
+
+      if (request.method === "GET") {
+        return await handleListMealPlanTemplateMeals(request, env);
+      }
+
+      return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+    }
+
+    if (
+      url.pathname.match(
+        /^\/v1\/meal-plan-templates\/[^/]+\/days\/[^/]+\/meals\/[^/]+$/
+      )
+    ) {
+      if (request.method === "PATCH") {
+        return await handleUpdateMealPlanTemplateMeal(request, env);
+      }
+
+      if (request.method === "DELETE") {
+        return await handleDeleteMealPlanTemplateMeal(request, env);
+      }
+
+      return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+    }
+
+    if (
+      url.pathname.match(
+        /^\/v1\/meal-plan-templates\/[^/]+\/days\/[^/]+\/meals\/[^/]+\/items$/
+      )
+    ) {
+      if (request.method === "POST") {
+        return await handleCreateMealPlanTemplateItem(request, env);
+      }
+
+      if (request.method === "GET") {
+        return await handleListMealPlanTemplateItems(request, env);
+      }
+
+      return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+    }
+
+    if (
+      url.pathname.match(
+        /^\/v1\/meal-plan-templates\/[^/]+\/days\/[^/]+\/meals\/[^/]+\/items\/[^/]+$/
+      )
+    ) {
+      if (request.method === "PATCH") {
+        return await handleUpdateMealPlanTemplateItem(request, env);
+      }
+
+      if (request.method === "DELETE") {
+        return await handleDeleteMealPlanTemplateItem(request, env);
       }
 
       return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);

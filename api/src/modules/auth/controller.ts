@@ -42,10 +42,15 @@ export async function handleRegister(
     const result = await register(env, body as Parameters<typeof register>[1]);
 
     return json(result, 201);
-  } catch (error) {
+    } catch (error) {
     if (error instanceof AuthServiceError) {
       return errorJson(error.code, error.message, error.status);
     }
+
+    console.error("AUTH_REGISTER_UNEXPECTED_ERROR", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
 
     return errorJson("INTERNAL_ERROR", "Unexpected error", 500);
   }
@@ -69,7 +74,7 @@ export async function handleLogin(
     const result = await login(env, body as Parameters<typeof login>[1]);
 
     return json(result, 200);
-  } catch (error) {
+      } catch (error) {
     if (error instanceof AuthServiceError) {
       return errorJson(error.code, error.message, error.status);
     }
