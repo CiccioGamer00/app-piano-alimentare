@@ -28,10 +28,12 @@ import {
   handleCreateOrgMember,
   handleListOrgMembers,
 } from "./modules/org-members/controller";
+
 import {
   handleCreateMealPlanTemplate,
   handleDeleteMealPlanTemplate,
   handleGetMealPlanTemplate,
+  handleGetMealPlanTemplateFull,
   handleListMealPlanTemplates,
   handleUpdateMealPlanTemplate,
 } from "./modules/meal-plan-templates/controller";
@@ -229,6 +231,17 @@ export default {
 
       return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
     }
+    if (
+  url.pathname.match(
+    /^\/v1\/meal-plan-templates\/[^/]+\/full$/
+  )
+) {
+  if (request.method === "GET") {
+    return await handleGetMealPlanTemplateFull(request, env);
+  }
+
+  return errorJson("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+}
 
     if (url.pathname.startsWith("/v1/meal-plan-templates/")) {
       if (request.method === "GET") {

@@ -20,6 +20,34 @@ export type MealPlanTemplateRow = {
   created_at: string;
   updated_at: string;
 };
+export type MealPlanTemplateDayTreeRow = {
+  id: string;
+  template_id: string;
+  day_label: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MealPlanTemplateMealTreeRow = {
+  id: string;
+  day_id: string;
+  meal_label: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MealPlanTemplateItemTreeRow = {
+  id: string;
+  meal_id: string;
+  item_text: string;
+  quantity_text: string | null;
+  notes: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
 
 export async function createMealPlanTemplate(
   env: MealPlanTemplatesRepoEnv,
@@ -159,4 +187,96 @@ export async function deleteMealPlanTemplateByIdAndOrgId(
   `;
 
   return rows.length > 0;
+}
+
+export async function listMealPlanTemplateDaysTreeByTemplateId(
+  env: MealPlanTemplatesRepoEnv,
+  input: {
+    templateId: string;
+    orgId: string;
+  }
+): Promise<MealPlanTemplateDayTreeRow[]> {
+  const sql = createDb(env);
+
+  const rows = await sql<MealPlanTemplateDayTreeRow[]>`
+    select
+      d.id,
+      d.template_id,
+      d.day_label,
+      d.sort_order,
+      d.created_at,
+      d.updated_at
+    from meal_plan_template_days d
+    inner join meal_plan_templates t
+      on t.id = d.template_id
+    where d.template_id = ${input.templateId}
+      and t.org_id = ${input.orgId}
+    order by d.sort_order asc, d.created_at asc
+  `;
+
+  return rows;
+}
+
+export async function listMealPlanTemplateMealsTreeByTemplateId(
+  env: MealPlanTemplatesRepoEnv,
+  input: {
+    templateId: string;
+    orgId: string;
+  }
+): Promise<MealPlanTemplateMealTreeRow[]> {
+  const sql = createDb(env);
+
+  const rows = await sql<MealPlanTemplateMealTreeRow[]>`
+    select
+      m.id,
+      m.day_id,
+      m.meal_label,
+      m.sort_order,
+      m.created_at,
+      m.updated_at
+    from meal_plan_template_meals m
+    inner join meal_plan_template_days d
+      on d.id = m.day_id
+    inner join meal_plan_templates t
+      on t.id = d.template_id
+    where d.template_id = ${input.templateId}
+      and t.org_id = ${input.orgId}
+    order by m.sort_order asc, m.created_at asc
+  `;
+
+  return rows;
+}
+
+export async function listMealPlanTemplateItemsTreeByTemplateId(
+  env: MealPlanTemplatesRepoEnv,
+  input: {
+    templateId: string;
+    orgId: string;
+  }
+): Promise<MealPlanTemplateItemTreeRow[]> {
+  const sql = createDb(env);
+
+  const rows = await sql<MealPlanTemplateItemTreeRow[]>`
+    select
+      i.id,
+      i.meal_id,
+      i.item_text,
+      i.quantity_text,
+      i.notes,
+      i.sort_order,
+      i.created_at,
+      i.updated_at
+    from meal_plan_template_items i
+    inner join meal_plan_template_meals m
+      on m.id = i.meal_id
+    inner join meal_plan_template_days d
+      on d.id = m.day_id
+    inner join meal_plan_templates t
+      on t.id = d.template_id
+    where d.template_id = ${input.templateId}
+      and t.org_id = ${input.orgId}
+    order by i.sort_order asc, i.created_at asc
+  `;
+
+  return rows;
 }

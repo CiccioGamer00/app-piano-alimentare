@@ -52,3 +52,44 @@ export function validateUpdateMealPlanTemplateBody(
     throw new Error("name cannot be empty");
   }
 }
+export type MealPlanTemplateFullItemDto = {
+  id: string;
+  mealId: string;
+  itemText: string;
+  quantityText: string | null;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MealPlanTemplateFullMealDto = {
+  id: string;
+  dayId: string;
+  mealLabel: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  items: MealPlanTemplateFullItemDto[];
+};
+
+export type MealPlanTemplateFullDayDto = {
+  id: string;
+  templateId: string;
+  dayLabel: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  meals: MealPlanTemplateFullMealDto[];
+};
+
+export type MealPlanTemplateFullDto = {
+  id: string;
+  orgId: string;
+  name: string;
+  description: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  days: MealPlanTemplateFullDayDto[];
+};

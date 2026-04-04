@@ -14,6 +14,9 @@ import {
   createMealPlanTemplate,
   deleteMealPlanTemplateByIdAndOrgId,
   findMealPlanTemplateByIdAndOrgId,
+  listMealPlanTemplateDaysTreeByTemplateId,
+  listMealPlanTemplateItemsTreeByTemplateId,
+  listMealPlanTemplateMealsTreeByTemplateId,
   listMealPlanTemplatesByOrgId,
   updateMealPlanTemplateByIdAndOrgId,
 } from "./repo";
@@ -22,6 +25,10 @@ import {
   validateUpdateMealPlanTemplateBody,
   type CreateMealPlanTemplateBody,
   type MealPlanTemplateDto,
+  type MealPlanTemplateFullDayDto,
+  type MealPlanTemplateFullDto,
+  type MealPlanTemplateFullItemDto,
+  type MealPlanTemplateFullMealDto,
   type UpdateMealPlanTemplateBody,
 } from "./types";
 
@@ -231,4 +238,97 @@ export async function deleteMealPlanTemplateForOrganization(
       404
     );
   }
+}
+export async function getMealPlanTemplateFullForOrganization(
+  env: Env,
+  auth: RequestAuthContext,
+  templateId: string
+): Promise<MealPlanTemplateFullDto> {
+  ensureMealPlanTemplatesReadAccess(auth);
+
+  const template = await findMealPlanTemplateByIdAndOrgId(env, {
+    templateId,
+    orgId: auth.orgId,
+  });
+
+  if (!template) {
+    throw new AuthServiceError(
+      "MEAL_PLAN_TEMPLATE_NOT_FOUND",
+      "Meal plan template not found",
+      404
+    );
+  }
+
+  const [dayRows, mealRows, itemRows] = await Promise.all([
+    listMealPlanTemplateDaysTreeByTemplateId(env, {
+      templateId,
+      orgId: auth.orgId,
+    }),
+    listMealPlanTemplateMealsTreeByTemplateId(env, {
+      templateId,
+      orgId: auth.orgId,
+    }),
+    listMealPlanTemplateItemsTreeByTemplateId(env, {
+      templateId,
+      orgId: auth.orgId,
+    }),
+  ]);
+
+  const itemsByMealId = new Map<string, MealPlanTemplateFullItemDto[]>();
+
+  for (const itemRow of itemRows) {
+    const itemDto: MealPlanTemplateFullItemDto = {
+      id: itemRow.id,
+      mealId: itemRow.meal_id,
+      itemText: itemRow.item_text,
+      quantityText: itemRow.quantity_text,
+      notes: itemRow.notes,
+      sortOrder: itemRow.sort_order,
+      createdAt: itemRow.created_at,
+      updatedAt: itemRow.updated_at,
+    };
+
+    const currentItems = itemsByMealId.get(itemRow.meal_id) ?? [];
+    currentItems.push(itemDto);
+    itemsByMealId.set(itemRow.meal_id, currentItems);
+  }
+
+  const mealsByDayId = new Map<string, MealPlanTemplateFullMealDto[]>();
+
+  for (const mealRow of mealRows) {
+    const mealDto: MealPlanTemplateFullMealDto = {
+      id: mealRow.id,
+      dayId: mealRow.day_id,
+      mealLabel: mealRow.meal_label,
+      sortOrder: mealRow.sort_order,
+      createdAt: mealRow.created_at,
+      updatedAt: mealRow.updated_at,
+      items: itemsByMealId.get(mealRow.id) ?? [],
+    };
+
+    const currentMeals = mealsByDayId.get(mealRow.day_id) ?? [];
+    currentMeals.push(mealDto);
+    mealsByDayId.set(mealRow.day_id, currentMeals);
+  }
+
+  const days: MealPlanTemplateFullDayDto[] = dayRows.map((dayRow) => ({
+    id: dayRow.id,
+    templateId: dayRow.template_id,
+    dayLabel: dayRow.day_label,
+    sortOrder: dayRow.sort_order,
+    createdAt: dayRow.created_at,
+    updatedAt: dayRow.updated_at,
+    meals: mealsByDayId.get(dayRow.id) ?? [],
+  }));
+
+  return {
+    id: template.id,
+    orgId: template.org_id,
+    name: template.name,
+    description: template.description,
+    notes: template.notes,
+    createdAt: template.created_at,
+    updatedAt: template.updated_at,
+    days,
+  };
 }
