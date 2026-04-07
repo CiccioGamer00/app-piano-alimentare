@@ -1,9 +1,9 @@
 /**
- * Purpose: Frontend API client for authentication and meal plan template read endpoints.
+ * Purpose: Frontend API client for authentication and meal plan template read/write endpoints.
  * Direct dependencies: browser fetch API and Vite environment variables.
  * Inputs/Outputs: plain frontend params in -> parsed JSON API payloads out.
  * Security: Sends bearer tokens only to the configured API base URL; never stores secrets here.
- * Notes: This first version covers only login, template list and full template detail reads.
+ * Notes: This version covers login, template list, template create and full template detail reads.
  */
 
 const API_BASE =
@@ -55,6 +55,44 @@ export async function fetchMealPlanTemplates(accessToken) {
   }
 
   return data.items || [];
+}
+
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - name must be a non-empty string after trim.
+ * Side effects: performs one network request to the meal plan templates create endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function createMealPlanTemplate(accessToken, { name, description, notes }) {
+  const normalizedName = String(name || "").trim();
+  const normalizedDescription = String(description || "").trim();
+  const normalizedNotes = String(notes || "").trim();
+
+  if (!normalizedName) {
+    throw new Error("Il nome del template è obbligatorio");
+  }
+
+  const response = await fetch(`${API_BASE}/v1/meal-plan-templates`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      name: normalizedName,
+      description: normalizedDescription || null,
+      notes: normalizedNotes || null,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore creazione template");
+  }
+
+  return data;
 }
 
 /**
