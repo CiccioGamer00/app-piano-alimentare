@@ -202,54 +202,65 @@ export default function App() {
       </section>
 
       <section className="panel">
-        <h2 className="panel-title">Crea template</h2>
-        <p className="muted-text">
-          Primo step frontend: creazione del solo metadata del template.
-        </p>
+  <h2 className="panel-title">Crea template</h2>
+  <p className="muted-text">
+    Primo step frontend: creazione del solo metadata del template.
+  </p>
 
-        <form onSubmit={handleCreateTemplate}>
-          <div>
-            <label htmlFor="new-template-name">Nome template</label>
-            <input
-              id="new-template-name"
-              type="text"
-              value={newTemplateName}
-              onChange={(event) => setNewTemplateName(event.target.value)}
-              disabled={!isAuthenticated}
-            />
-          </div>
+  <form onSubmit={handleCreateTemplate}>
+    <div className="field">
+      <label className="field-label" htmlFor="new-template-name">
+        Nome template
+      </label>
+      <input
+        className="field-input"
+        id="new-template-name"
+        type="text"
+        value={newTemplateName}
+        onChange={(event) => setNewTemplateName(event.target.value)}
+        disabled={!isAuthenticated}
+      />
+    </div>
 
-          <div>
-            <label htmlFor="new-template-description">Descrizione</label>
-            <textarea
-              id="new-template-description"
-              value={newTemplateDescription}
-              onChange={(event) => setNewTemplateDescription(event.target.value)}
-              disabled={!isAuthenticated}
-            />
-          </div>
+    <div className="field">
+      <label className="field-label" htmlFor="new-template-description">
+        Descrizione
+      </label>
+      <textarea
+        className="field-input"
+        id="new-template-description"
+        rows={3}
+        value={newTemplateDescription}
+        onChange={(event) => setNewTemplateDescription(event.target.value)}
+        disabled={!isAuthenticated}
+      />
+    </div>
 
-          <div>
-            <label htmlFor="new-template-notes">Note</label>
-            <textarea
-              id="new-template-notes"
-              value={newTemplateNotes}
-              onChange={(event) => setNewTemplateNotes(event.target.value)}
-              disabled={!isAuthenticated}
-            />
-          </div>
+    <div className="field">
+      <label className="field-label" htmlFor="new-template-notes">
+        Note
+      </label>
+      <textarea
+        className="field-input"
+        id="new-template-notes"
+        rows={3}
+        value={newTemplateNotes}
+        onChange={(event) => setNewTemplateNotes(event.target.value)}
+        disabled={!isAuthenticated}
+      />
+    </div>
 
-          <div className="session-actions">
-            <button
-              className="primary-button"
-              type="submit"
-              disabled={!isAuthenticated}
-            >
-              Crea template
-            </button>
-          </div>
-        </form>
-      </section>
+    <div className="session-actions">
+      <button
+        className="primary-button"
+        type="submit"
+        disabled={!isAuthenticated}
+      >
+        Crea template
+      </button>
+    </div>
+  </form>
+</section>
 
       <section className="content-grid">
         <TemplatesList
