@@ -15,7 +15,7 @@ import {
   handleMe,
   handleRegister,
 } from "./modules/auth/controller";
-import { errorJson } from "./shared/http";
+import { corsPreflight, errorJson } from "./shared/http";
 import type { Env } from "./shared/db";
 import {
   handleCreatePatient,
@@ -55,6 +55,9 @@ import {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+		if (request.method === "OPTIONS") {
+  return corsPreflight();
+}
 
     if (url.pathname === "/v1/health" || url.pathname === "/health") {
       return handleHealth();
