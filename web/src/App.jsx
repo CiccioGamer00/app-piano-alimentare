@@ -18,6 +18,7 @@ export default function App() {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [selectedTemplateDetail, setSelectedTemplateDetail] = useState(null);
+  const [showToken, setShowToken] = useState(false);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -44,6 +45,7 @@ export default function App() {
       const items = await fetchMealPlanTemplates(accessToken);
       setTemplates(items);
       setSelectedTemplateDetail(null);
+      setSelectedTemplateId("");
       setStatus("Template caricati");
     } catch (error) {
       setStatus(`Errore caricamento template: ${String(error)}`);
@@ -68,48 +70,83 @@ export default function App() {
     }
   }
 
+  const isAuthenticated = accessToken.length > 0;
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1 className="app-title">App Piano Alimentare</h1>
-        <p className="app-subtitle">
-          Frontend tecnico di verifica per login, lista template e dettaglio full.
-        </p>
-        <p className="api-base">
-          <strong>API:</strong> {API_BASE}
-        </p>
+        <div>
+          <p className="eyebrow">Piano alimentare</p>
+          <h1 className="app-title">Esplora template</h1>
+          <p className="app-subtitle">
+            Area tecnica di lettura per verificare login, lista template e
+            dettaglio completo del template.
+          </p>
+        </div>
+
+        <div className="header-meta">
+          <p>
+            <strong>API:</strong> {API_BASE}
+          </p>
+          <p>
+            <strong>Stato:</strong> {status}
+          </p>
+          <p>
+            <strong>Template attivo:</strong> {selectedTemplateId || "nessuno"}
+          </p>
+        </div>
       </header>
 
-      <LoginForm
-        email={email}
-        password={password}
-        onEmailChange={setEmail}
-        onPasswordChange={setPassword}
-        onSubmit={handleLogin}
-      />
+      <section className="top-grid">
+        <LoginForm
+          email={email}
+          password={password}
+          onEmailChange={setEmail}
+          onPasswordChange={setPassword}
+          onSubmit={handleLogin}
+        />
 
-      <TemplatesList
-        templates={templates}
-        onLoadTemplates={handleLoadTemplates}
-        onSelectTemplate={handleSelectTemplate}
-      />
+        <section className="panel">
+          <h2 className="panel-title">Sessione</h2>
+          <p className="session-badge">
+            {isAuthenticated ? "Autenticato" : "Non autenticato"}
+          </p>
+          <p className="muted-text">
+            Usa il login per ottenere un token e interrogare gli endpoint
+            protetti del backend.
+          </p>
 
-      <TemplateDetail template={selectedTemplateDetail} />
-
-      <section className="panel">
-        <h2 className="panel-title">Stato applicazione</h2>
-        <p>
-          <strong>Stato:</strong> {status}
-        </p>
-        <p>
-          <strong>Template attivo:</strong> {selectedTemplateId || "nessuno"}
-        </p>
+          <div className="session-actions">
+            <button
+              className="secondary-button"
+              onClick={() => setShowToken((current) => !current)}
+              type="button"
+              disabled={!isAuthenticated}
+            >
+              {showToken ? "Nascondi token" : "Mostra token"}
+            </button>
+          </div>
+        </section>
       </section>
 
-      <section className="panel">
-        <h2 className="panel-title">Token</h2>
-        <textarea className="token-box" readOnly value={accessToken} />
+      <section className="content-grid">
+        <TemplatesList
+          templates={templates}
+          isAuthenticated={isAuthenticated}
+          selectedTemplateId={selectedTemplateId}
+          onLoadTemplates={handleLoadTemplates}
+          onSelectTemplate={handleSelectTemplate}
+        />
+
+        <TemplateDetail template={selectedTemplateDetail} />
       </section>
+
+      {showToken ? (
+        <section className="panel">
+          <h2 className="panel-title">Token</h2>
+          <textarea className="token-box" readOnly value={accessToken} />
+        </section>
+      ) : null}
     </div>
   );
 }
