@@ -3,7 +3,7 @@
  * Direct dependencies: React state, CSS, auth form component, templates list component, template detail component, API client.
  * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form and detail states.
  * Security: Handles access token in local component state only; sends it to protected backend endpoints through the API client.
- * Notes: This prototype intentionally keeps auth, list, selection and create state centralized here to make the flow easy to verify step by step.
+ * Notes: This prototype intentionally keeps auth, list, selection, create and delete state centralized here to make the flow easy to verify step by step.
  */
 
 import { useState } from "react";
@@ -14,6 +14,7 @@ import TemplatesList from "./components/TemplatesList.jsx";
 import {
   API_BASE,
   createMealPlanTemplate,
+  deleteMealPlanTemplate,
   fetchMealPlanTemplateFull,
   fetchMealPlanTemplates,
   loginWithPassword,
@@ -130,10 +131,7 @@ export default function App() {
 
       setSelectedTemplateId(createdTemplate.id);
 
-      const detail = await fetchMealPlanTemplateFull(
-        accessToken,
-        createdTemplate.id,
-      );
+      const detail = await fetchMealPlanTemplateFull(accessToken, createdTemplate.id);
       setSelectedTemplateDetail(detail);
 
       setNewTemplateName("");
@@ -142,6 +140,48 @@ export default function App() {
       setStatus("Template creato e caricato");
     } catch (error) {
       setStatus(`Errore creazione template: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Preconditions:
+   * - accessToken must be available.
+   * - templateId must be a non-empty string.
+   * Side effects:
+   * - performs delete + list refresh API calls
+   * - clears selected detail state when the deleted template was currently open
+   * Expected errors: missing auth token, local validation errors, network errors, non-ok API responses.
+   */
+  async function handleDeleteTemplate(templateId) {
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      "Confermi l'eliminazione del template selezionato?"
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setStatus("Eliminazione template in corso...");
+
+    try {
+      await deleteMealPlanTemplate(accessToken, templateId);
+
+      const items = await fetchMealPlanTemplates(accessToken);
+      setTemplates(items);
+
+      if (selectedTemplateId === templateId) {
+        setSelectedTemplateId("");
+        setSelectedTemplateDetail(null);
+      }
+
+      setStatus("Template eliminato");
+    } catch (error) {
+      setStatus(`Errore eliminazione template: ${String(error)}`);
     }
   }
 
@@ -155,7 +195,7 @@ export default function App() {
           <h1 className="app-title">Esplora template</h1>
           <p className="app-subtitle">
             Area tecnica di lettura per verificare login, lista template,
-            creazione metadata e dettaglio completo del template.
+            creazione metadata, eliminazione e dettaglio completo del template.
           </p>
         </div>
 
@@ -234,9 +274,7 @@ export default function App() {
               id="new-template-description"
               rows={3}
               value={newTemplateDescription}
-              onChange={(event) =>
-                setNewTemplateDescription(event.target.value)
-              }
+              onChange={(event) => setNewTemplateDescription(event.target.value)}
               disabled={!isAuthenticated}
             />
           </div>
@@ -274,6 +312,7 @@ export default function App() {
           selectedTemplateId={selectedTemplateId}
           onLoadTemplates={handleLoadTemplates}
           onSelectTemplate={handleSelectTemplate}
+          onDeleteTemplate={handleDeleteTemplate}
         />
 
         <TemplateDetail template={selectedTemplateDetail} />

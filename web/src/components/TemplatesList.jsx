@@ -1,7 +1,7 @@
 /**
- * Purpose: Presentational component for the meal plan templates list and selection action.
+ * Purpose: Presentational component for the meal plan templates list and selection/delete actions.
  * Direct dependencies: React.
- * Inputs/Outputs: receives templates array, auth/selection state and callbacks from parent -> emits load/select actions.
+ * Inputs/Outputs: receives templates array, auth/selection state and callbacks from parent -> emits load/select/delete actions.
  * Security: UI-only component; no token handling or API calls here.
  * Notes: Keeps empty-state rendering localized and disables actions when the user is not authenticated.
  */
@@ -12,6 +12,7 @@ export default function TemplatesList({
   selectedTemplateId,
   onLoadTemplates,
   onSelectTemplate,
+  onDeleteTemplate,
 }) {
   return (
     <section className="panel">
@@ -49,14 +50,25 @@ export default function TemplatesList({
                   <p className="template-id">ID: {template.id}</p>
                 </div>
 
-                <button
-                  className="secondary-button"
-                  onClick={() => onSelectTemplate(template.id)}
-                  type="button"
-                  disabled={!isAuthenticated}
-                >
-                  {isSelected ? "Dettaglio aperto" : "Apri dettaglio"}
-                </button>
+                <div className="template-actions">
+                  <button
+                    className="secondary-button"
+                    onClick={() => onSelectTemplate(template.id)}
+                    type="button"
+                    disabled={!isAuthenticated}
+                  >
+                    {isSelected ? "Dettaglio aperto" : "Apri dettaglio"}
+                  </button>
+
+                  <button
+                    className="secondary-button"
+                    onClick={() => onDeleteTemplate(template.id)}
+                    type="button"
+                    disabled={!isAuthenticated}
+                  >
+                    Elimina
+                  </button>
+                </div>
               </li>
             );
           })}

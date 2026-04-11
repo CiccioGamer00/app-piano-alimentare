@@ -94,6 +94,38 @@ export async function createMealPlanTemplate(accessToken, { name, description, n
 
   return data;
 }
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId must be a non-empty string.
+ * Side effects: performs one network request to the meal plan templates delete endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function deleteMealPlanTemplate(accessToken, templateId) {
+  const normalizedTemplateId = String(templateId || "").trim();
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore eliminazione template");
+  }
+
+  return data;
+}
 
 /**
  * Preconditions: accessToken must be valid and templateId must be a non-empty string.
