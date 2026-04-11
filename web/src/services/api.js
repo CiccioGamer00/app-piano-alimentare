@@ -387,6 +387,53 @@ export async function updateMealPlanTemplateMeal(
  * Preconditions:
  * - accessToken must be a valid bearer token string.
  * - templateId, dayId and mealId must be non-empty strings.
+ * Side effects: performs one network request to the meal plan template meal delete endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function deleteMealPlanTemplateMeal(
+  accessToken,
+  templateId,
+  dayId,
+  mealId
+) {
+  const normalizedTemplateId = String(templateId || "").trim();
+  const normalizedDayId = String(dayId || "").trim();
+  const normalizedMealId = String(mealId || "").trim();
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  if (!normalizedDayId) {
+    throw new Error("L'id del giorno è obbligatorio");
+  }
+
+  if (!normalizedMealId) {
+    throw new Error("L'id del pasto è obbligatorio");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}/days/${normalizedDayId}/meals/${normalizedMealId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore eliminazione pasto");
+  }
+
+  return data;
+}
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId, dayId and mealId must be non-empty strings.
  * - itemText must be a non-empty string after trim.
  * - sortOrder must be an integer greater than or equal to 0.
  * Side effects: performs one network request to the meal plan template items create endpoint.

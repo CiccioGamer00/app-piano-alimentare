@@ -19,6 +19,7 @@ import {
   createMealPlanTemplateMeal,
   deleteMealPlanTemplate,
   deleteMealPlanTemplateItem,
+  deleteMealPlanTemplateMeal,
   fetchMealPlanTemplateFull,
   fetchMealPlanTemplates,
   loginWithPassword,
@@ -616,6 +617,60 @@ export default function App() {
     }
   }
 
+  async function handleDeleteMeal() {
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setStatus("Seleziona prima un template");
+      return;
+    }
+
+    if (!editMealDayId || !editMealId) {
+      setStatus("Seleziona prima un pasto");
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      "Confermi l'eliminazione del pasto selezionato?"
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setStatus("Eliminazione pasto in corso...");
+
+    try {
+      await deleteMealPlanTemplateMeal(
+        accessToken,
+        selectedTemplateId,
+        editMealDayId,
+        editMealId
+      );
+
+      const deletedMealDayId = editMealDayId;
+
+      const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
+      setSelectedTemplateDetail(detail);
+
+      const selectedDay = getDayById(detail, deletedMealDayId);
+      setNewMealDayId(deletedMealDayId);
+      setNewMealLabel("");
+      setNewMealSortOrder(String(selectedDay?.meals.length || 0));
+
+      syncEditMealFormFromDetail(detail);
+      syncItemFormFromDetail(detail);
+      syncEditItemFormFromDetail(detail);
+
+      setStatus("Pasto eliminato");
+    } catch (error) {
+      setStatus(`Errore eliminazione pasto: ${String(error)}`);
+    }
+  }
+
   async function handleCreateItem(event) {
     event.preventDefault();
 
@@ -867,8 +922,8 @@ export default function App() {
           <p className="app-subtitle">
             Area tecnica di lettura per verificare login, lista template,
             creazione metadata, aggiornamento, eliminazione, creazione giorni,
-            creazione pasti, modifica pasti, creazione item, modifica item,
-            eliminazione item e dettaglio completo del template.
+            creazione pasti, modifica pasti, eliminazione pasti, creazione item,
+            modifica item, eliminazione item e dettaglio completo del template.
           </p>
         </div>
 
@@ -1019,6 +1074,7 @@ export default function App() {
           onEditMealLabelChange={setEditMealLabel}
           onEditMealSortOrderChange={setEditMealSortOrder}
           onSubmitEditMeal={handleUpdateMeal}
+          onDeleteMeal={handleDeleteMeal}
           newItemDayId={newItemDayId}
           newItemMealId={newItemMealId}
           newItemText={newItemText}
