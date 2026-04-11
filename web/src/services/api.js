@@ -375,6 +375,99 @@ export async function createMealPlanTemplateItem(
 
   return data;
 }
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId, dayId, mealId and itemId must be non-empty strings.
+ * - at least one updatable field must be provided.
+ * Side effects: performs one network request to the meal plan template item update endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function updateMealPlanTemplateItem(
+  accessToken,
+  templateId,
+  dayId,
+  mealId,
+  itemId,
+  { itemText, quantityText, notes, sortOrder }
+) {
+  const normalizedTemplateId = String(templateId || "").trim();
+  const normalizedDayId = String(dayId || "").trim();
+  const normalizedMealId = String(mealId || "").trim();
+  const normalizedItemId = String(itemId || "").trim();
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  if (!normalizedDayId) {
+    throw new Error("L'id del giorno è obbligatorio");
+  }
+
+  if (!normalizedMealId) {
+    throw new Error("L'id del pasto è obbligatorio");
+  }
+
+  if (!normalizedItemId) {
+    throw new Error("L'id dell'item è obbligatorio");
+  }
+
+  const payload = {};
+
+  if (itemText !== undefined) {
+    const normalizedItemText = String(itemText || "").trim();
+
+    if (!normalizedItemText) {
+      throw new Error("Il testo dell'item non può essere vuoto");
+    }
+
+    payload.itemText = normalizedItemText;
+  }
+
+  if (quantityText !== undefined) {
+    const normalizedQuantityText = String(quantityText || "").trim();
+    payload.quantityText = normalizedQuantityText || null;
+  }
+
+  if (notes !== undefined) {
+    const normalizedNotes = String(notes || "").trim();
+    payload.notes = normalizedNotes || null;
+  }
+
+  if (sortOrder !== undefined) {
+    const normalizedSortOrder = Number(sortOrder);
+
+    if (!Number.isInteger(normalizedSortOrder) || normalizedSortOrder < 0) {
+      throw new Error("L'ordine dell'item deve essere un intero maggiore o uguale a 0");
+    }
+
+    payload.sortOrder = normalizedSortOrder;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new Error("Devi modificare almeno un campo dell'item");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}/days/${normalizedDayId}/meals/${normalizedMealId}/items/${normalizedItemId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore aggiornamento item");
+  }
+
+  return data;
+}
 
 /**
  * Preconditions: accessToken must be valid and templateId must be a non-empty string.

@@ -1,5 +1,5 @@
 /**
- * Purpose: Presentational component for rendering one full meal plan template tree, its metadata edit form, the day creation form, the meal creation form and the item creation form.
+ * Purpose: Presentational component for rendering one full meal plan template tree, its metadata edit form, the day creation form, the meal creation form, the item creation form and the item edit form.
  * Direct dependencies: React.
  * Inputs/Outputs: receives the selected full template DTO plus edit/create form state and callbacks from parent and renders nested days, meals and items.
  * Security: UI-only component; no direct API calls or credential handling here.
@@ -41,11 +41,36 @@ export default function TemplateDetail({
   onNewItemNotesChange,
   onNewItemSortOrderChange,
   onSubmitCreateItem,
+  editItemDayId,
+  editItemMealId,
+  editItemId,
+  editItemText,
+  editItemQuantityText,
+  editItemNotes,
+  editItemSortOrder,
+  onEditItemDayIdChange,
+  onEditItemMealIdChange,
+  onEditItemIdChange,
+  onEditItemTextChange,
+  onEditItemQuantityTextChange,
+  onEditItemNotesChange,
+  onEditItemSortOrderChange,
+  onSubmitEditItem,
 }) {
   const selectedItemDay =
     template?.days.find((day) => day.id === newItemDayId) || null;
 
   const availableMealsForSelectedDay = selectedItemDay?.meals || [];
+
+  const selectedEditItemDay =
+    template?.days.find((day) => day.id === editItemDayId) || null;
+
+  const availableMealsForEditDay = selectedEditItemDay?.meals || [];
+
+  const selectedEditItemMeal =
+    availableMealsForEditDay.find((meal) => meal.id === editItemMealId) || null;
+
+  const availableItemsForEditMeal = selectedEditItemMeal?.items || [];
 
   return (
     <section className="panel">
@@ -377,6 +402,147 @@ export default function TemplateDetail({
                   }
                 >
                   Aggiungi item
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div>
+            <h3 className="subsection-title">Modifica item</h3>
+
+            <form onSubmit={onSubmitEditItem}>
+              <div className="field">
+                <label className="field-label" htmlFor="edit-item-day-id">
+                  Giorno
+                </label>
+                <select
+                  className="field-input"
+                  id="edit-item-day-id"
+                  value={editItemDayId}
+                  onChange={(event) => onEditItemDayIdChange(event.target.value)}
+                  disabled={!isAuthenticated || template.days.length === 0}
+                >
+                  <option value="">Seleziona un giorno</option>
+
+                  {template.days.map((day) => (
+                    <option key={day.id} value={day.id}>
+                      {day.dayLabel} (sortOrder: {day.sortOrder})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-item-meal-id">
+                  Pasto
+                </label>
+                <select
+                  className="field-input"
+                  id="edit-item-meal-id"
+                  value={editItemMealId}
+                  onChange={(event) => onEditItemMealIdChange(event.target.value)}
+                  disabled={!isAuthenticated || availableMealsForEditDay.length === 0}
+                >
+                  <option value="">Seleziona un pasto</option>
+
+                  {availableMealsForEditDay.map((meal) => (
+                    <option key={meal.id} value={meal.id}>
+                      {meal.mealLabel} (sortOrder: {meal.sortOrder})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-item-id">
+                  Item
+                </label>
+                <select
+                  className="field-input"
+                  id="edit-item-id"
+                  value={editItemId}
+                  onChange={(event) => onEditItemIdChange(event.target.value)}
+                  disabled={!isAuthenticated || availableItemsForEditMeal.length === 0}
+                >
+                  <option value="">Seleziona un item</option>
+
+                  {availableItemsForEditMeal.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.itemText} (sortOrder: {item.sortOrder})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-item-text">
+                  Testo item
+                </label>
+                <input
+                  className="field-input"
+                  id="edit-item-text"
+                  type="text"
+                  value={editItemText}
+                  onChange={(event) => onEditItemTextChange(event.target.value)}
+                  disabled={!isAuthenticated || !editItemId}
+                />
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-item-quantity-text">
+                  Quantità
+                </label>
+                <input
+                  className="field-input"
+                  id="edit-item-quantity-text"
+                  type="text"
+                  value={editItemQuantityText}
+                  onChange={(event) =>
+                    onEditItemQuantityTextChange(event.target.value)
+                  }
+                  disabled={!isAuthenticated || !editItemId}
+                />
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-item-notes">
+                  Note
+                </label>
+                <textarea
+                  className="field-input"
+                  id="edit-item-notes"
+                  rows={3}
+                  value={editItemNotes}
+                  onChange={(event) => onEditItemNotesChange(event.target.value)}
+                  disabled={!isAuthenticated || !editItemId}
+                />
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-item-sort-order">
+                  Ordine
+                </label>
+                <input
+                  className="field-input"
+                  id="edit-item-sort-order"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editItemSortOrder}
+                  onChange={(event) =>
+                    onEditItemSortOrderChange(event.target.value)
+                  }
+                  disabled={!isAuthenticated || !editItemId}
+                />
+              </div>
+
+              <div className="session-actions">
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={!isAuthenticated || !editItemId}
+                >
+                  Salva item
                 </button>
               </div>
             </form>

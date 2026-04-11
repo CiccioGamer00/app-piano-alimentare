@@ -1,7 +1,7 @@
 /**
  * Purpose: Main frontend container for authentication and technical meal plan template exploration flows.
  * Direct dependencies: React state, CSS, auth form component, templates list component, template detail component, API client.
- * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form, day creation form, meal creation form, item creation form and detail states.
+ * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form, day creation form, meal creation form, item creation form, item edit form and detail states.
  * Security: Handles access token in local component state only; sends it to protected backend endpoints through the API client.
  * Notes: This prototype intentionally keeps auth, list, selection, create, update and delete state centralized here to make the flow easy to verify step by step.
  */
@@ -22,6 +22,7 @@ import {
   fetchMealPlanTemplates,
   loginWithPassword,
   updateMealPlanTemplate,
+  updateMealPlanTemplateItem,
 } from "./services/api.js";
 
 export default function App() {
@@ -56,6 +57,14 @@ export default function App() {
   const [newItemNotes, setNewItemNotes] = useState("");
   const [newItemSortOrder, setNewItemSortOrder] = useState("0");
 
+  const [editItemDayId, setEditItemDayId] = useState("");
+  const [editItemMealId, setEditItemMealId] = useState("");
+  const [editItemId, setEditItemId] = useState("");
+  const [editItemText, setEditItemText] = useState("");
+  const [editItemQuantityText, setEditItemQuantityText] = useState("");
+  const [editItemNotes, setEditItemNotes] = useState("");
+  const [editItemSortOrder, setEditItemSortOrder] = useState("0");
+
   function getDayById(detail, dayId) {
     if (!detail || !Array.isArray(detail.days)) {
       return null;
@@ -74,6 +83,16 @@ export default function App() {
     return day.meals.find((meal) => meal.id === mealId) || null;
   }
 
+  function getItemById(detail, dayId, mealId, itemId) {
+    const meal = getMealById(detail, dayId, mealId);
+
+    if (!meal || !Array.isArray(meal.items)) {
+      return null;
+    }
+
+    return meal.items.find((item) => item.id === itemId) || null;
+  }
+
   function resetItemForm() {
     setNewItemDayId("");
     setNewItemMealId("");
@@ -81,6 +100,16 @@ export default function App() {
     setNewItemQuantityText("");
     setNewItemNotes("");
     setNewItemSortOrder("0");
+  }
+
+  function resetEditItemForm() {
+    setEditItemDayId("");
+    setEditItemMealId("");
+    setEditItemId("");
+    setEditItemText("");
+    setEditItemQuantityText("");
+    setEditItemNotes("");
+    setEditItemSortOrder("0");
   }
 
   function syncItemFormFromDetail(detail) {
@@ -101,6 +130,49 @@ export default function App() {
     setNewItemQuantityText("");
     setNewItemNotes("");
     setNewItemSortOrder(String(firstMeal.items.length));
+  }
+
+  function syncEditItemFormFromDetail(detail) {
+    const firstDay = detail?.days?.[0] || null;
+    const firstMeal = firstDay?.meals?.[0] || null;
+
+    let firstItem = null;
+    let firstItemDayId = "";
+    let firstItemMealId = "";
+
+    for (const day of detail?.days || []) {
+      for (const meal of day.meals || []) {
+        if (Array.isArray(meal.items) && meal.items.length > 0) {
+          firstItem = meal.items[0];
+          firstItemDayId = day.id;
+          firstItemMealId = meal.id;
+          break;
+        }
+      }
+
+      if (firstItem) {
+        break;
+      }
+    }
+
+    if (!firstItem) {
+      setEditItemDayId(firstDay?.id || "");
+      setEditItemMealId(firstMeal?.id || "");
+      setEditItemId("");
+      setEditItemText("");
+      setEditItemQuantityText("");
+      setEditItemNotes("");
+      setEditItemSortOrder("0");
+      return;
+    }
+
+    setEditItemDayId(firstItemDayId);
+    setEditItemMealId(firstItemMealId);
+    setEditItemId(firstItem.id);
+    setEditItemText(firstItem.itemText || "");
+    setEditItemQuantityText(firstItem.quantityText || "");
+    setEditItemNotes(firstItem.notes || "");
+    setEditItemSortOrder(String(firstItem.sortOrder ?? 0));
   }
 
   function handleNewMealDayIdChange(dayId) {
@@ -125,6 +197,50 @@ export default function App() {
 
     const selectedMeal = getMealById(selectedTemplateDetail, newItemDayId, mealId);
     setNewItemSortOrder(String(selectedMeal?.items.length || 0));
+  }
+
+  function handleEditItemDayIdChange(dayId) {
+    setEditItemDayId(dayId);
+
+    const selectedDay = getDayById(selectedTemplateDetail, dayId);
+    const firstMeal = selectedDay?.meals[0] || null;
+    const firstItem = firstMeal?.items[0] || null;
+
+    setEditItemMealId(firstMeal?.id || "");
+    setEditItemId(firstItem?.id || "");
+    setEditItemText(firstItem?.itemText || "");
+    setEditItemQuantityText(firstItem?.quantityText || "");
+    setEditItemNotes(firstItem?.notes || "");
+    setEditItemSortOrder(String(firstItem?.sortOrder ?? 0));
+  }
+
+  function handleEditItemMealIdChange(mealId) {
+    setEditItemMealId(mealId);
+
+    const selectedMeal = getMealById(selectedTemplateDetail, editItemDayId, mealId);
+    const firstItem = selectedMeal?.items[0] || null;
+
+    setEditItemId(firstItem?.id || "");
+    setEditItemText(firstItem?.itemText || "");
+    setEditItemQuantityText(firstItem?.quantityText || "");
+    setEditItemNotes(firstItem?.notes || "");
+    setEditItemSortOrder(String(firstItem?.sortOrder ?? 0));
+  }
+
+  function handleEditItemIdChange(itemId) {
+    setEditItemId(itemId);
+
+    const selectedItem = getItemById(
+      selectedTemplateDetail,
+      editItemDayId,
+      editItemMealId,
+      itemId
+    );
+
+    setEditItemText(selectedItem?.itemText || "");
+    setEditItemQuantityText(selectedItem?.quantityText || "");
+    setEditItemNotes(selectedItem?.notes || "");
+    setEditItemSortOrder(String(selectedItem?.sortOrder ?? 0));
   }
 
   /**
@@ -172,6 +288,7 @@ export default function App() {
       setNewMealLabel("");
       setNewMealSortOrder("0");
       resetItemForm();
+      resetEditItemForm();
       setStatus("Template caricati");
     } catch (error) {
       setStatus(`Errore caricamento template: ${String(error)}`);
@@ -210,6 +327,7 @@ export default function App() {
       setNewMealSortOrder(String(firstDayMealsCount));
 
       syncItemFormFromDetail(detail);
+      syncEditItemFormFromDetail(detail);
 
       setStatus("Dettaglio template caricato");
     } catch (error) {
@@ -260,6 +378,7 @@ export default function App() {
       setNewMealLabel("");
       setNewMealSortOrder("0");
       resetItemForm();
+      resetEditItemForm();
 
       setNewTemplateName("");
       setNewTemplateDescription("");
@@ -364,6 +483,8 @@ export default function App() {
         String(createdDayFromDetail?.meals[0]?.items.length || 0)
       );
 
+      syncEditItemFormFromDetail(detail);
+
       setStatus("Giorno creato e caricato");
     } catch (error) {
       setStatus(`Errore creazione giorno: ${String(error)}`);
@@ -426,6 +547,8 @@ export default function App() {
       setNewItemNotes("");
       setNewItemSortOrder("0");
 
+      syncEditItemFormFromDetail(detail);
+
       setStatus("Pasto creato e caricato");
     } catch (error) {
       setStatus(`Errore creazione pasto: ${String(error)}`);
@@ -469,7 +592,7 @@ export default function App() {
     setStatus("Creazione item in corso...");
 
     try {
-      await createMealPlanTemplateItem(
+      const createdItem = await createMealPlanTemplateItem(
         accessToken,
         selectedTemplateId,
         newItemDayId,
@@ -491,9 +614,103 @@ export default function App() {
       setNewItemNotes("");
       setNewItemSortOrder(String(selectedMeal?.items.length || 0));
 
+      const createdItemFromDetail = getItemById(
+        detail,
+        newItemDayId,
+        newItemMealId,
+        createdItem.id
+      );
+
+      setEditItemDayId(newItemDayId);
+      setEditItemMealId(newItemMealId);
+      setEditItemId(createdItem.id);
+      setEditItemText(createdItemFromDetail?.itemText || "");
+      setEditItemQuantityText(createdItemFromDetail?.quantityText || "");
+      setEditItemNotes(createdItemFromDetail?.notes || "");
+      setEditItemSortOrder(String(createdItemFromDetail?.sortOrder ?? 0));
+
       setStatus("Item creato e caricato");
     } catch (error) {
       setStatus(`Errore creazione item: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Preconditions:
+   * - accessToken must be available.
+   * - selectedTemplateId, editItemDayId, editItemMealId and editItemId must identify existing resources in the current org.
+   * Side effects:
+   * - performs item update + detail read API calls
+   * - rewrites edit item form with the canonical backend response
+   * Expected errors: missing auth token, missing selected template/day/meal/item, local validation errors, network errors, non-ok API responses.
+   */
+  async function handleUpdateItem(event) {
+    event.preventDefault();
+
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setStatus("Seleziona prima un template");
+      return;
+    }
+
+    if (!editItemDayId) {
+      setStatus("Seleziona prima un giorno dell'item");
+      return;
+    }
+
+    if (!editItemMealId) {
+      setStatus("Seleziona prima un pasto dell'item");
+      return;
+    }
+
+    if (!editItemId) {
+      setStatus("Seleziona prima un item");
+      return;
+    }
+
+    setStatus("Aggiornamento item in corso...");
+
+    try {
+      await updateMealPlanTemplateItem(
+        accessToken,
+        selectedTemplateId,
+        editItemDayId,
+        editItemMealId,
+        editItemId,
+        {
+          itemText: editItemText,
+          quantityText: editItemQuantityText,
+          notes: editItemNotes,
+          sortOrder: editItemSortOrder,
+        }
+      );
+
+      const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
+      setSelectedTemplateDetail(detail);
+
+      const updatedItem = getItemById(
+        detail,
+        editItemDayId,
+        editItemMealId,
+        editItemId
+      );
+
+      if (!updatedItem) {
+        syncEditItemFormFromDetail(detail);
+      } else {
+        setEditItemText(updatedItem.itemText || "");
+        setEditItemQuantityText(updatedItem.quantityText || "");
+        setEditItemNotes(updatedItem.notes || "");
+        setEditItemSortOrder(String(updatedItem.sortOrder ?? 0));
+      }
+
+      setStatus("Item aggiornato");
+    } catch (error) {
+      setStatus(`Errore aggiornamento item: ${String(error)}`);
     }
   }
 
@@ -540,6 +757,7 @@ export default function App() {
         setNewMealLabel("");
         setNewMealSortOrder("0");
         resetItemForm();
+        resetEditItemForm();
       }
 
       setStatus("Template eliminato");
@@ -559,7 +777,8 @@ export default function App() {
           <p className="app-subtitle">
             Area tecnica di lettura per verificare login, lista template,
             creazione metadata, aggiornamento, eliminazione, creazione giorni,
-            creazione pasti, creazione item e dettaglio completo del template.
+            creazione pasti, creazione item, modifica item e dettaglio completo
+            del template.
           </p>
         </div>
 
@@ -714,6 +933,21 @@ export default function App() {
           onNewItemNotesChange={setNewItemNotes}
           onNewItemSortOrderChange={setNewItemSortOrder}
           onSubmitCreateItem={handleCreateItem}
+          editItemDayId={editItemDayId}
+          editItemMealId={editItemMealId}
+          editItemId={editItemId}
+          editItemText={editItemText}
+          editItemQuantityText={editItemQuantityText}
+          editItemNotes={editItemNotes}
+          editItemSortOrder={editItemSortOrder}
+          onEditItemDayIdChange={handleEditItemDayIdChange}
+          onEditItemMealIdChange={handleEditItemMealIdChange}
+          onEditItemIdChange={handleEditItemIdChange}
+          onEditItemTextChange={setEditItemText}
+          onEditItemQuantityTextChange={setEditItemQuantityText}
+          onEditItemNotesChange={setEditItemNotes}
+          onEditItemSortOrderChange={setEditItemSortOrder}
+          onSubmitEditItem={handleUpdateItem}
         />
       </section>
 
