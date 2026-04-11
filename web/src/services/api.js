@@ -191,6 +191,121 @@ export async function updateMealPlanTemplate(
 
   return data;
 }
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId must be a non-empty string.
+ * - dayLabel must be a non-empty string after trim.
+ * - sortOrder must be an integer greater than or equal to 0.
+ * Side effects: performs one network request to the meal plan template days create endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function createMealPlanTemplateDay(
+  accessToken,
+  templateId,
+  { dayLabel, sortOrder }
+) {
+  const normalizedTemplateId = String(templateId || "").trim();
+  const normalizedDayLabel = String(dayLabel || "").trim();
+  const normalizedSortOrder = Number(sortOrder);
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  if (!normalizedDayLabel) {
+    throw new Error("Il nome del giorno è obbligatorio");
+  }
+
+  if (
+    !Number.isInteger(normalizedSortOrder) ||
+    normalizedSortOrder < 0
+  ) {
+    throw new Error("L'ordine del giorno deve essere un intero maggiore o uguale a 0");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}/days`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        dayLabel: normalizedDayLabel,
+        sortOrder: normalizedSortOrder,
+      }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore creazione giorno");
+  }
+
+  return data;
+}
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId and dayId must be non-empty strings.
+ * - mealLabel must be a non-empty string after trim.
+ * - sortOrder must be an integer greater than or equal to 0.
+ * Side effects: performs one network request to the meal plan template meals create endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function createMealPlanTemplateMeal(
+  accessToken,
+  templateId,
+  dayId,
+  { mealLabel, sortOrder }
+) {
+  const normalizedTemplateId = String(templateId || "").trim();
+  const normalizedDayId = String(dayId || "").trim();
+  const normalizedMealLabel = String(mealLabel || "").trim();
+  const normalizedSortOrder = Number(sortOrder);
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  if (!normalizedDayId) {
+    throw new Error("L'id del giorno è obbligatorio");
+  }
+
+  if (!normalizedMealLabel) {
+    throw new Error("Il nome del pasto è obbligatorio");
+  }
+
+  if (!Number.isInteger(normalizedSortOrder) || normalizedSortOrder < 0) {
+    throw new Error("L'ordine del pasto deve essere un intero maggiore o uguale a 0");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}/days/${normalizedDayId}/meals`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        mealLabel: normalizedMealLabel,
+        sortOrder: normalizedSortOrder,
+      }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore creazione pasto");
+  }
+
+  return data;
+}
 
 /**
  * Preconditions: accessToken must be valid and templateId must be a non-empty string.

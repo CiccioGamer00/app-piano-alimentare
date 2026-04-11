@@ -1,7 +1,7 @@
 /**
  * Purpose: Main frontend container for authentication and technical meal plan template exploration flows.
  * Direct dependencies: React state, CSS, auth form component, templates list component, template detail component, API client.
- * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form and detail states.
+ * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form, day creation form, meal creation form and detail states.
  * Security: Handles access token in local component state only; sends it to protected backend endpoints through the API client.
  * Notes: This prototype intentionally keeps auth, list, selection, create, update and delete state centralized here to make the flow easy to verify step by step.
  */
@@ -14,6 +14,8 @@ import TemplatesList from "./components/TemplatesList.jsx";
 import {
   API_BASE,
   createMealPlanTemplate,
+  createMealPlanTemplateDay,
+  createMealPlanTemplateMeal,
   deleteMealPlanTemplate,
   fetchMealPlanTemplateFull,
   fetchMealPlanTemplates,
@@ -38,6 +40,13 @@ export default function App() {
   const [editTemplateName, setEditTemplateName] = useState("");
   const [editTemplateDescription, setEditTemplateDescription] = useState("");
   const [editTemplateNotes, setEditTemplateNotes] = useState("");
+
+  const [newDayLabel, setNewDayLabel] = useState("");
+  const [newDaySortOrder, setNewDaySortOrder] = useState("0");
+
+  const [newMealDayId, setNewMealDayId] = useState("");
+  const [newMealLabel, setNewMealLabel] = useState("");
+  const [newMealSortOrder, setNewMealSortOrder] = useState("0");
 
   /**
    * Preconditions: the form submit event must come from the login form.
@@ -78,6 +87,11 @@ export default function App() {
       setEditTemplateName("");
       setEditTemplateDescription("");
       setEditTemplateNotes("");
+      setNewDayLabel("");
+      setNewDaySortOrder("0");
+      setNewMealDayId("");
+      setNewMealLabel("");
+      setNewMealSortOrder("0");
       setStatus("Template caricati");
     } catch (error) {
       setStatus(`Errore caricamento template: ${String(error)}`);
@@ -104,6 +118,17 @@ export default function App() {
       setEditTemplateName(detail.name || "");
       setEditTemplateDescription(detail.description || "");
       setEditTemplateNotes(detail.notes || "");
+      setNewDayLabel("");
+      setNewDaySortOrder(
+        String(Array.isArray(detail.days) ? detail.days.length : 0)
+      );
+
+      const firstDayId = detail.days[0]?.id || "";
+      const firstDayMealsCount = detail.days[0]?.meals?.length || 0;
+      setNewMealDayId(firstDayId);
+      setNewMealLabel("");
+      setNewMealSortOrder(String(firstDayMealsCount));
+
       setStatus("Dettaglio template caricato");
     } catch (error) {
       setStatus(`Errore caricamento dettaglio: ${String(error)}`);
@@ -147,6 +172,11 @@ export default function App() {
       setEditTemplateName(detail.name || "");
       setEditTemplateDescription(detail.description || "");
       setEditTemplateNotes(detail.notes || "");
+      setNewDayLabel("");
+      setNewDaySortOrder("0");
+      setNewMealDayId("");
+      setNewMealLabel("");
+      setNewMealSortOrder("0");
 
       setNewTemplateName("");
       setNewTemplateDescription("");
@@ -205,6 +235,110 @@ export default function App() {
   /**
    * Preconditions:
    * - accessToken must be available.
+   * - selectedTemplateId must identify an existing template in the current org.
+   * - newDayLabel must be non-empty and newDaySortOrder must be a valid integer >= 0.
+   * Side effects:
+   * - performs day create + detail read API calls
+   * - clears the day creation form on success
+   * - refreshes the selected template detail with the new nested day
+   * Expected errors: missing auth token, no selected template, local validation errors, network errors, non-ok API responses.
+   */
+  async function handleCreateDay(event) {
+    event.preventDefault();
+
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setStatus("Seleziona prima un template");
+      return;
+    }
+
+    setStatus("Creazione giorno in corso...");
+
+    try {
+      await createMealPlanTemplateDay(accessToken, selectedTemplateId, {
+        dayLabel: newDayLabel,
+        sortOrder: newDaySortOrder,
+      });
+
+      const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
+      setSelectedTemplateDetail(detail);
+      setNewDayLabel("");
+      setNewDaySortOrder(String(detail.days.length));
+
+      const lastCreatedDay = detail.days[detail.days.length - 1];
+      if (lastCreatedDay) {
+        setNewMealDayId(lastCreatedDay.id);
+        setNewMealSortOrder(String(lastCreatedDay.meals.length));
+      }
+
+      setStatus("Giorno creato e caricato");
+    } catch (error) {
+      setStatus(`Errore creazione giorno: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Preconditions:
+   * - accessToken must be available.
+   * - selectedTemplateId and newMealDayId must identify existing resources in the current org.
+   * - newMealLabel must be non-empty and newMealSortOrder must be a valid integer >= 0.
+   * Side effects:
+   * - performs meal create + detail read API calls
+   * - clears the meal creation form on success
+   * - refreshes the selected template detail with the new nested meal
+   * Expected errors: missing auth token, missing selected template/day, local validation errors, network errors, non-ok API responses.
+   */
+  async function handleCreateMeal(event) {
+    event.preventDefault();
+
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setStatus("Seleziona prima un template");
+      return;
+    }
+
+    if (!newMealDayId) {
+      setStatus("Seleziona prima un giorno");
+      return;
+    }
+
+    setStatus("Creazione pasto in corso...");
+
+    try {
+      await createMealPlanTemplateMeal(
+        accessToken,
+        selectedTemplateId,
+        newMealDayId,
+        {
+          mealLabel: newMealLabel,
+          sortOrder: newMealSortOrder,
+        }
+      );
+
+      const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
+      setSelectedTemplateDetail(detail);
+
+      const selectedDay = detail.days.find((day) => day.id === newMealDayId);
+      setNewMealLabel("");
+      setNewMealSortOrder(String(selectedDay?.meals.length || 0));
+
+      setStatus("Pasto creato e caricato");
+    } catch (error) {
+      setStatus(`Errore creazione pasto: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Preconditions:
+   * - accessToken must be available.
    * - templateId must be a non-empty string.
    * Side effects:
    * - performs delete + list refresh API calls
@@ -239,6 +373,11 @@ export default function App() {
         setEditTemplateName("");
         setEditTemplateDescription("");
         setEditTemplateNotes("");
+        setNewDayLabel("");
+        setNewDaySortOrder("0");
+        setNewMealDayId("");
+        setNewMealLabel("");
+        setNewMealSortOrder("0");
       }
 
       setStatus("Template eliminato");
@@ -257,8 +396,8 @@ export default function App() {
           <h1 className="app-title">Esplora template</h1>
           <p className="app-subtitle">
             Area tecnica di lettura per verificare login, lista template,
-            creazione metadata, aggiornamento, eliminazione e dettaglio completo
-            del template.
+            creazione metadata, aggiornamento, eliminazione, creazione giorni,
+            creazione pasti e dettaglio completo del template.
           </p>
         </div>
 
@@ -388,6 +527,18 @@ export default function App() {
           onEditDescriptionChange={setEditTemplateDescription}
           onEditNotesChange={setEditTemplateNotes}
           onSubmitEdit={handleUpdateTemplate}
+          newDayLabel={newDayLabel}
+          newDaySortOrder={newDaySortOrder}
+          onNewDayLabelChange={setNewDayLabel}
+          onNewDaySortOrderChange={setNewDaySortOrder}
+          onSubmitCreateDay={handleCreateDay}
+          newMealDayId={newMealDayId}
+          newMealLabel={newMealLabel}
+          newMealSortOrder={newMealSortOrder}
+          onNewMealDayIdChange={setNewMealDayId}
+          onNewMealLabelChange={setNewMealLabel}
+          onNewMealSortOrderChange={setNewMealSortOrder}
+          onSubmitCreateMeal={handleCreateMeal}
         />
       </section>
 
