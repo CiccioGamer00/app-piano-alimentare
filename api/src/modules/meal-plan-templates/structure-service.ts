@@ -244,15 +244,28 @@ export async function createMealPlanTemplateDayForOrganization(
     throw new AuthServiceError("VALIDATION_ERROR", message, 400);
   }
 
-  await ensureTemplateExistsForOrganization(env, auth, templateId);
+await ensureTemplateExistsForOrganization(env, auth, templateId);
 
-  const createdDay = await createMealPlanTemplateDay(env, {
-    templateId,
-    dayLabel: body.dayLabel.trim(),
-    sortOrder: body.sortOrder,
-  });
+const existingDays = await listMealPlanTemplateDaysByTemplateId(env, templateId);
+const hasDuplicateSortOrder = existingDays.some(
+  (day) => day.sort_order === body.sortOrder
+);
 
-  return mapMealPlanTemplateDayRowToDto(createdDay);
+if (hasDuplicateSortOrder) {
+  throw new AuthServiceError(
+    "MEAL_PLAN_TEMPLATE_DAY_SORT_ORDER_CONFLICT",
+    "A day with the same sortOrder already exists in this template",
+    409
+  );
+}
+
+const createdDay = await createMealPlanTemplateDay(env, {
+  templateId,
+  dayLabel: body.dayLabel.trim(),
+  sortOrder: body.sortOrder,
+});
+
+return mapMealPlanTemplateDayRowToDto(createdDay);
 }
 
 /**
