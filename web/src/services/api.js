@@ -310,6 +310,83 @@ export async function createMealPlanTemplateMeal(
  * Preconditions:
  * - accessToken must be a valid bearer token string.
  * - templateId, dayId and mealId must be non-empty strings.
+ * - at least one updatable field must be provided.
+ * Side effects: performs one network request to the meal plan template meal update endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function updateMealPlanTemplateMeal(
+  accessToken,
+  templateId,
+  dayId,
+  mealId,
+  { mealLabel, sortOrder }
+) {
+  const normalizedTemplateId = String(templateId || "").trim();
+  const normalizedDayId = String(dayId || "").trim();
+  const normalizedMealId = String(mealId || "").trim();
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  if (!normalizedDayId) {
+    throw new Error("L'id del giorno è obbligatorio");
+  }
+
+  if (!normalizedMealId) {
+    throw new Error("L'id del pasto è obbligatorio");
+  }
+
+  const payload = {};
+
+  if (mealLabel !== undefined) {
+    const normalizedMealLabel = String(mealLabel || "").trim();
+
+    if (!normalizedMealLabel) {
+      throw new Error("Il nome del pasto non può essere vuoto");
+    }
+
+    payload.mealLabel = normalizedMealLabel;
+  }
+
+  if (sortOrder !== undefined) {
+    const normalizedSortOrder = Number(sortOrder);
+
+    if (!Number.isInteger(normalizedSortOrder) || normalizedSortOrder < 0) {
+      throw new Error("L'ordine del pasto deve essere un intero maggiore o uguale a 0");
+    }
+
+    payload.sortOrder = normalizedSortOrder;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new Error("Devi modificare almeno un campo del pasto");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}/days/${normalizedDayId}/meals/${normalizedMealId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore aggiornamento pasto");
+  }
+
+  return data;
+}
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId, dayId and mealId must be non-empty strings.
  * - itemText must be a non-empty string after trim.
  * - sortOrder must be an integer greater than or equal to 0.
  * Side effects: performs one network request to the meal plan template items create endpoint.

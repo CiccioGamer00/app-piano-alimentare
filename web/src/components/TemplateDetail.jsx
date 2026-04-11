@@ -1,5 +1,5 @@
 /**
- * Purpose: Presentational component for rendering one full meal plan template tree, its metadata edit form, the day creation form, the meal creation form, the item creation form, the item edit form and item delete action.
+ * Purpose: Presentational component for rendering one full meal plan template tree, its metadata edit form, the day creation form, the meal creation form, the meal edit form, the item creation form, the item edit form and item delete action.
  * Direct dependencies: React.
  * Inputs/Outputs: receives the selected full template DTO plus edit/create form state and callbacks from parent and renders nested days, meals and items.
  * Security: UI-only component; no direct API calls or credential handling here.
@@ -28,6 +28,15 @@ export default function TemplateDetail({
   onNewMealLabelChange,
   onNewMealSortOrderChange,
   onSubmitCreateMeal,
+  editMealDayId,
+  editMealId,
+  editMealLabel,
+  editMealSortOrder,
+  onEditMealDayIdChange,
+  onEditMealIdChange,
+  onEditMealLabelChange,
+  onEditMealSortOrderChange,
+  onSubmitEditMeal,
   newItemDayId,
   newItemMealId,
   newItemText,
@@ -62,6 +71,11 @@ export default function TemplateDetail({
     template?.days.find((day) => day.id === newItemDayId) || null;
 
   const availableMealsForSelectedDay = selectedItemDay?.meals || [];
+
+  const selectedEditMealDay =
+    template?.days.find((day) => day.id === editMealDayId) || null;
+
+  const availableMealsForEditMealDay = selectedEditMealDay?.meals || [];
 
   const selectedEditItemDay =
     template?.days.find((day) => day.id === editItemDayId) || null;
@@ -271,6 +285,98 @@ export default function TemplateDetail({
                   disabled={!isAuthenticated || template.days.length === 0}
                 >
                   Aggiungi pasto
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div>
+            <h3 className="subsection-title">Modifica pasto</h3>
+
+            <form onSubmit={onSubmitEditMeal}>
+              <div className="field">
+                <label className="field-label" htmlFor="edit-meal-day-id">
+                  Giorno
+                </label>
+                <select
+                  className="field-input"
+                  id="edit-meal-day-id"
+                  value={editMealDayId}
+                  onChange={(event) => onEditMealDayIdChange(event.target.value)}
+                  disabled={!isAuthenticated || template.days.length === 0}
+                >
+                  <option value="">Seleziona un giorno</option>
+
+                  {template.days.map((day) => (
+                    <option key={day.id} value={day.id}>
+                      {day.dayLabel} (sortOrder: {day.sortOrder})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-meal-id">
+                  Pasto
+                </label>
+                <select
+                  className="field-input"
+                  id="edit-meal-id"
+                  value={editMealId}
+                  onChange={(event) => onEditMealIdChange(event.target.value)}
+                  disabled={
+                    !isAuthenticated || availableMealsForEditMealDay.length === 0
+                  }
+                >
+                  <option value="">Seleziona un pasto</option>
+
+                  {availableMealsForEditMealDay.map((meal) => (
+                    <option key={meal.id} value={meal.id}>
+                      {meal.mealLabel} (sortOrder: {meal.sortOrder})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-meal-label">
+                  Nome pasto
+                </label>
+                <input
+                  className="field-input"
+                  id="edit-meal-label"
+                  type="text"
+                  value={editMealLabel}
+                  onChange={(event) => onEditMealLabelChange(event.target.value)}
+                  disabled={!isAuthenticated || !editMealId}
+                />
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="edit-meal-sort-order">
+                  Ordine
+                </label>
+                <input
+                  className="field-input"
+                  id="edit-meal-sort-order"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={editMealSortOrder}
+                  onChange={(event) =>
+                    onEditMealSortOrderChange(event.target.value)
+                  }
+                  disabled={!isAuthenticated || !editMealId}
+                />
+              </div>
+
+              <div className="session-actions">
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={!isAuthenticated || !editMealId}
+                >
+                  Salva pasto
                 </button>
               </div>
             </form>

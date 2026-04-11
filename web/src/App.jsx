@@ -1,7 +1,7 @@
 /**
  * Purpose: Main frontend container for authentication and technical meal plan template exploration flows.
  * Direct dependencies: React state, CSS, auth form component, templates list component, template detail component, API client.
- * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form, day creation form, meal creation form, item creation form, item edit form and detail states.
+ * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form, day creation form, meal creation form, meal edit form, item creation form, item edit form and detail states.
  * Security: Handles access token in local component state only; sends it to protected backend endpoints through the API client.
  * Notes: This prototype intentionally keeps auth, list, selection, create, update and delete state centralized here to make the flow easy to verify step by step.
  */
@@ -24,6 +24,7 @@ import {
   loginWithPassword,
   updateMealPlanTemplate,
   updateMealPlanTemplateItem,
+  updateMealPlanTemplateMeal,
 } from "./services/api.js";
 
 export default function App() {
@@ -50,6 +51,11 @@ export default function App() {
   const [newMealDayId, setNewMealDayId] = useState("");
   const [newMealLabel, setNewMealLabel] = useState("");
   const [newMealSortOrder, setNewMealSortOrder] = useState("0");
+
+  const [editMealDayId, setEditMealDayId] = useState("");
+  const [editMealId, setEditMealId] = useState("");
+  const [editMealLabel, setEditMealLabel] = useState("");
+  const [editMealSortOrder, setEditMealSortOrder] = useState("0");
 
   const [newItemDayId, setNewItemDayId] = useState("");
   const [newItemMealId, setNewItemMealId] = useState("");
@@ -94,6 +100,13 @@ export default function App() {
     return meal.items.find((item) => item.id === itemId) || null;
   }
 
+  function resetEditMealForm() {
+    setEditMealDayId("");
+    setEditMealId("");
+    setEditMealLabel("");
+    setEditMealSortOrder("0");
+  }
+
   function resetItemForm() {
     setNewItemDayId("");
     setNewItemMealId("");
@@ -111,6 +124,24 @@ export default function App() {
     setEditItemQuantityText("");
     setEditItemNotes("");
     setEditItemSortOrder("0");
+  }
+
+  function syncEditMealFormFromDetail(detail) {
+    const firstDayWithMeals =
+      detail?.days?.find((day) => Array.isArray(day.meals) && day.meals.length > 0) ||
+      null;
+
+    if (!firstDayWithMeals) {
+      resetEditMealForm();
+      return;
+    }
+
+    const firstMeal = firstDayWithMeals.meals[0];
+
+    setEditMealDayId(firstDayWithMeals.id);
+    setEditMealId(firstMeal.id);
+    setEditMealLabel(firstMeal.mealLabel || "");
+    setEditMealSortOrder(String(firstMeal.sortOrder ?? 0));
   }
 
   function syncItemFormFromDetail(detail) {
@@ -183,6 +214,25 @@ export default function App() {
     setNewMealSortOrder(String(selectedDay?.meals.length || 0));
   }
 
+  function handleEditMealDayIdChange(dayId) {
+    setEditMealDayId(dayId);
+
+    const selectedDay = getDayById(selectedTemplateDetail, dayId);
+    const firstMeal = selectedDay?.meals?.[0] || null;
+
+    setEditMealId(firstMeal?.id || "");
+    setEditMealLabel(firstMeal?.mealLabel || "");
+    setEditMealSortOrder(String(firstMeal?.sortOrder ?? 0));
+  }
+
+  function handleEditMealIdChange(mealId) {
+    setEditMealId(mealId);
+
+    const selectedMeal = getMealById(selectedTemplateDetail, editMealDayId, mealId);
+    setEditMealLabel(selectedMeal?.mealLabel || "");
+    setEditMealSortOrder(String(selectedMeal?.sortOrder ?? 0));
+  }
+
   function handleNewItemDayIdChange(dayId) {
     setNewItemDayId(dayId);
 
@@ -244,11 +294,6 @@ export default function App() {
     setEditItemSortOrder(String(selectedItem?.sortOrder ?? 0));
   }
 
-  /**
-   * Preconditions: the form submit event must come from the login form.
-   * Side effects: performs an auth API call and writes session token/status into component state.
-   * Expected errors: invalid credentials, network errors, non-ok API responses.
-   */
   async function handleLogin(event) {
     event.preventDefault();
     setStatus("Login in corso...");
@@ -262,11 +307,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions: accessToken must be available.
-   * Side effects: performs one protected API call and refreshes templates/select-detail state.
-   * Expected errors: missing auth token, network errors, non-ok API responses.
-   */
   async function handleLoadTemplates() {
     if (!accessToken) {
       setStatus("Devi prima fare login");
@@ -288,6 +328,7 @@ export default function App() {
       setNewMealDayId("");
       setNewMealLabel("");
       setNewMealSortOrder("0");
+      resetEditMealForm();
       resetItemForm();
       resetEditItemForm();
       setStatus("Template caricati");
@@ -296,11 +337,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions: accessToken must be available and templateId must be a non-empty string.
-   * Side effects: performs one protected API call and updates selected template state.
-   * Expected errors: missing auth token, network errors, non-ok API responses.
-   */
   async function handleSelectTemplate(templateId) {
     if (!accessToken) {
       setStatus("Devi prima fare login");
@@ -327,6 +363,7 @@ export default function App() {
       setNewMealLabel("");
       setNewMealSortOrder(String(firstDayMealsCount));
 
+      syncEditMealFormFromDetail(detail);
       syncItemFormFromDetail(detail);
       syncEditItemFormFromDetail(detail);
 
@@ -336,16 +373,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions:
-   * - accessToken must be available.
-   * - newTemplateName must contain a non-empty value after trim.
-   * Side effects:
-   * - performs create + list refresh + detail read API calls
-   * - clears the create form on success
-   * - updates template list and selected detail state
-   * Expected errors: missing auth token, local validation errors, network errors, non-ok API responses.
-   */
   async function handleCreateTemplate(event) {
     event.preventDefault();
 
@@ -378,6 +405,7 @@ export default function App() {
       setNewMealDayId("");
       setNewMealLabel("");
       setNewMealSortOrder("0");
+      resetEditMealForm();
       resetItemForm();
       resetEditItemForm();
 
@@ -390,15 +418,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions:
-   * - accessToken must be available.
-   * - selectedTemplateId must identify an existing template in the current org.
-   * Side effects:
-   * - performs update + list refresh + detail read API calls
-   * - rewrites edit state with the canonical backend response
-   * Expected errors: missing auth token, no selected template, local validation errors, network errors, non-ok API responses.
-   */
   async function handleUpdateTemplate(event) {
     event.preventDefault();
 
@@ -435,17 +454,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions:
-   * - accessToken must be available.
-   * - selectedTemplateId must identify an existing template in the current org.
-   * - newDayLabel must be non-empty and newDaySortOrder must be a valid integer >= 0.
-   * Side effects:
-   * - performs day create + detail read API calls
-   * - clears the day creation form on success
-   * - refreshes the selected template detail with the new nested day
-   * Expected errors: missing auth token, no selected template, local validation errors, network errors, non-ok API responses.
-   */
   async function handleCreateDay(event) {
     event.preventDefault();
 
@@ -484,6 +492,7 @@ export default function App() {
         String(createdDayFromDetail?.meals[0]?.items.length || 0)
       );
 
+      syncEditMealFormFromDetail(detail);
       syncEditItemFormFromDetail(detail);
 
       setStatus("Giorno creato e caricato");
@@ -492,17 +501,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions:
-   * - accessToken must be available.
-   * - selectedTemplateId and newMealDayId must identify existing resources in the current org.
-   * - newMealLabel must be non-empty and newMealSortOrder must be a valid integer >= 0.
-   * Side effects:
-   * - performs meal create + detail read API calls
-   * - clears the meal creation form on success
-   * - refreshes the selected template detail with the new nested meal
-   * Expected errors: missing auth token, missing selected template/day, local validation errors, network errors, non-ok API responses.
-   */
   async function handleCreateMeal(event) {
     event.preventDefault();
 
@@ -541,6 +539,13 @@ export default function App() {
       setNewMealLabel("");
       setNewMealSortOrder(String(selectedDay?.meals.length || 0));
 
+      setEditMealDayId(newMealDayId);
+      setEditMealId(createdMeal.id);
+
+      const createdMealFromDetail = getMealById(detail, newMealDayId, createdMeal.id);
+      setEditMealLabel(createdMealFromDetail?.mealLabel || "");
+      setEditMealSortOrder(String(createdMealFromDetail?.sortOrder ?? 0));
+
       setNewItemDayId(newMealDayId);
       setNewItemMealId(createdMeal.id);
       setNewItemText("");
@@ -556,17 +561,61 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions:
-   * - accessToken must be available.
-   * - selectedTemplateId, newItemDayId and newItemMealId must identify existing resources in the current org.
-   * - newItemText must be non-empty and newItemSortOrder must be a valid integer >= 0.
-   * Side effects:
-   * - performs item create + detail read API calls
-   * - clears the item text fields on success
-   * - refreshes the selected template detail with the new nested item
-   * Expected errors: missing auth token, missing selected template/day/meal, local validation errors, network errors, non-ok API responses.
-   */
+  async function handleUpdateMeal(event) {
+    event.preventDefault();
+
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setStatus("Seleziona prima un template");
+      return;
+    }
+
+    if (!editMealDayId) {
+      setStatus("Seleziona prima un giorno del pasto");
+      return;
+    }
+
+    if (!editMealId) {
+      setStatus("Seleziona prima un pasto");
+      return;
+    }
+
+    setStatus("Aggiornamento pasto in corso...");
+
+    try {
+      await updateMealPlanTemplateMeal(
+        accessToken,
+        selectedTemplateId,
+        editMealDayId,
+        editMealId,
+        {
+          mealLabel: editMealLabel,
+          sortOrder: editMealSortOrder,
+        }
+      );
+
+      const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
+      setSelectedTemplateDetail(detail);
+
+      const updatedMeal = getMealById(detail, editMealDayId, editMealId);
+
+      if (!updatedMeal) {
+        syncEditMealFormFromDetail(detail);
+      } else {
+        setEditMealLabel(updatedMeal.mealLabel || "");
+        setEditMealSortOrder(String(updatedMeal.sortOrder ?? 0));
+      }
+
+      setStatus("Pasto aggiornato");
+    } catch (error) {
+      setStatus(`Errore aggiornamento pasto: ${String(error)}`);
+    }
+  }
+
   async function handleCreateItem(event) {
     event.preventDefault();
 
@@ -636,15 +685,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions:
-   * - accessToken must be available.
-   * - selectedTemplateId, editItemDayId, editItemMealId and editItemId must identify existing resources in the current org.
-   * Side effects:
-   * - performs item update + detail read API calls
-   * - rewrites edit item form with the canonical backend response
-   * Expected errors: missing auth token, missing selected template/day/meal/item, local validation errors, network errors, non-ok API responses.
-   */
   async function handleUpdateItem(event) {
     event.preventDefault();
 
@@ -715,15 +755,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions:
-   * - accessToken must be available.
-   * - selectedTemplateId, editItemDayId, editItemMealId and editItemId must identify existing resources in the current org.
-   * Side effects:
-   * - performs item delete + detail read API calls
-   * - reselects another item when available, otherwise clears the edit item form
-   * Expected errors: missing auth token, missing selected template/day/meal/item, network errors, non-ok API responses.
-   */
   async function handleDeleteItem() {
     if (!accessToken) {
       setStatus("Devi prima fare login");
@@ -781,15 +812,6 @@ export default function App() {
     }
   }
 
-  /**
-   * Preconditions:
-   * - accessToken must be available.
-   * - templateId must be a non-empty string.
-   * Side effects:
-   * - performs delete + list refresh API calls
-   * - clears selected detail state when the deleted template was currently open
-   * Expected errors: missing auth token, local validation errors, network errors, non-ok API responses.
-   */
   async function handleDeleteTemplate(templateId) {
     if (!accessToken) {
       setStatus("Devi prima fare login");
@@ -823,6 +845,7 @@ export default function App() {
         setNewMealDayId("");
         setNewMealLabel("");
         setNewMealSortOrder("0");
+        resetEditMealForm();
         resetItemForm();
         resetEditItemForm();
       }
@@ -844,8 +867,8 @@ export default function App() {
           <p className="app-subtitle">
             Area tecnica di lettura per verificare login, lista template,
             creazione metadata, aggiornamento, eliminazione, creazione giorni,
-            creazione pasti, creazione item, modifica item, eliminazione item e
-            dettaglio completo del template.
+            creazione pasti, modifica pasti, creazione item, modifica item,
+            eliminazione item e dettaglio completo del template.
           </p>
         </div>
 
@@ -987,6 +1010,15 @@ export default function App() {
           onNewMealLabelChange={setNewMealLabel}
           onNewMealSortOrderChange={setNewMealSortOrder}
           onSubmitCreateMeal={handleCreateMeal}
+          editMealDayId={editMealDayId}
+          editMealId={editMealId}
+          editMealLabel={editMealLabel}
+          editMealSortOrder={editMealSortOrder}
+          onEditMealDayIdChange={handleEditMealDayIdChange}
+          onEditMealIdChange={handleEditMealIdChange}
+          onEditMealLabelChange={setEditMealLabel}
+          onEditMealSortOrderChange={setEditMealSortOrder}
+          onSubmitEditMeal={handleUpdateMeal}
           newItemDayId={newItemDayId}
           newItemMealId={newItemMealId}
           newItemText={newItemText}
