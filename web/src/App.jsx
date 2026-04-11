@@ -18,6 +18,7 @@ import {
   createMealPlanTemplateItem,
   createMealPlanTemplateMeal,
   deleteMealPlanTemplate,
+  deleteMealPlanTemplateItem,
   fetchMealPlanTemplateFull,
   fetchMealPlanTemplates,
   loginWithPassword,
@@ -717,6 +718,72 @@ export default function App() {
   /**
    * Preconditions:
    * - accessToken must be available.
+   * - selectedTemplateId, editItemDayId, editItemMealId and editItemId must identify existing resources in the current org.
+   * Side effects:
+   * - performs item delete + detail read API calls
+   * - reselects another item when available, otherwise clears the edit item form
+   * Expected errors: missing auth token, missing selected template/day/meal/item, network errors, non-ok API responses.
+   */
+  async function handleDeleteItem() {
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setStatus("Seleziona prima un template");
+      return;
+    }
+
+    if (!editItemDayId || !editItemMealId || !editItemId) {
+      setStatus("Seleziona prima un item");
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      "Confermi l'eliminazione dell'item selezionato?"
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setStatus("Eliminazione item in corso...");
+
+    try {
+      await deleteMealPlanTemplateItem(
+        accessToken,
+        selectedTemplateId,
+        editItemDayId,
+        editItemMealId,
+        editItemId
+      );
+
+      const deletedItemDayId = editItemDayId;
+      const deletedItemMealId = editItemMealId;
+
+      const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
+      setSelectedTemplateDetail(detail);
+
+      const selectedMeal = getMealById(detail, deletedItemDayId, deletedItemMealId);
+      setNewItemDayId(deletedItemDayId);
+      setNewItemMealId(deletedItemMealId);
+      setNewItemText("");
+      setNewItemQuantityText("");
+      setNewItemNotes("");
+      setNewItemSortOrder(String(selectedMeal?.items.length || 0));
+
+      syncEditItemFormFromDetail(detail);
+
+      setStatus("Item eliminato");
+    } catch (error) {
+      setStatus(`Errore eliminazione item: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Preconditions:
+   * - accessToken must be available.
    * - templateId must be a non-empty string.
    * Side effects:
    * - performs delete + list refresh API calls
@@ -777,8 +844,8 @@ export default function App() {
           <p className="app-subtitle">
             Area tecnica di lettura per verificare login, lista template,
             creazione metadata, aggiornamento, eliminazione, creazione giorni,
-            creazione pasti, creazione item, modifica item e dettaglio completo
-            del template.
+            creazione pasti, creazione item, modifica item, eliminazione item e
+            dettaglio completo del template.
           </p>
         </div>
 
@@ -948,6 +1015,7 @@ export default function App() {
           onEditItemNotesChange={setEditItemNotes}
           onEditItemSortOrderChange={setEditItemSortOrder}
           onSubmitEditItem={handleUpdateItem}
+          onDeleteItem={handleDeleteItem}
         />
       </section>
 

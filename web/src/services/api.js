@@ -468,6 +468,59 @@ export async function updateMealPlanTemplateItem(
 
   return data;
 }
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId, dayId, mealId and itemId must be non-empty strings.
+ * Side effects: performs one network request to the meal plan template item delete endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function deleteMealPlanTemplateItem(
+  accessToken,
+  templateId,
+  dayId,
+  mealId,
+  itemId
+) {
+  const normalizedTemplateId = String(templateId || "").trim();
+  const normalizedDayId = String(dayId || "").trim();
+  const normalizedMealId = String(mealId || "").trim();
+  const normalizedItemId = String(itemId || "").trim();
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  if (!normalizedDayId) {
+    throw new Error("L'id del giorno è obbligatorio");
+  }
+
+  if (!normalizedMealId) {
+    throw new Error("L'id del pasto è obbligatorio");
+  }
+
+  if (!normalizedItemId) {
+    throw new Error("L'id dell'item è obbligatorio");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}/days/${normalizedDayId}/meals/${normalizedMealId}/items/${normalizedItemId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore eliminazione item");
+  }
+
+  return data;
+}
 
 /**
  * Preconditions: accessToken must be valid and templateId must be a non-empty string.

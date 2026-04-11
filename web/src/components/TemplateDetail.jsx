@@ -1,5 +1,5 @@
 /**
- * Purpose: Presentational component for rendering one full meal plan template tree, its metadata edit form, the day creation form, the meal creation form, the item creation form and the item edit form.
+ * Purpose: Presentational component for rendering one full meal plan template tree, its metadata edit form, the day creation form, the meal creation form, the item creation form, the item edit form and item delete action.
  * Direct dependencies: React.
  * Inputs/Outputs: receives the selected full template DTO plus edit/create form state and callbacks from parent and renders nested days, meals and items.
  * Security: UI-only component; no direct API calls or credential handling here.
@@ -56,6 +56,7 @@ export default function TemplateDetail({
   onEditItemNotesChange,
   onEditItemSortOrderChange,
   onSubmitEditItem,
+  onDeleteItem,
 }) {
   const selectedItemDay =
     template?.days.find((day) => day.id === newItemDayId) || null;
@@ -543,6 +544,15 @@ export default function TemplateDetail({
                   disabled={!isAuthenticated || !editItemId}
                 >
                   Salva item
+                </button>
+
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={onDeleteItem}
+                  disabled={!isAuthenticated || !editItemId}
+                >
+                  Elimina item
                 </button>
               </div>
             </form>
