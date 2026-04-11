@@ -126,6 +126,71 @@ export async function deleteMealPlanTemplate(accessToken, templateId) {
 
   return data;
 }
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId must be a non-empty string.
+ * - at least one updatable field must be provided.
+ * Side effects: performs one network request to the meal plan templates update endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function updateMealPlanTemplate(
+  accessToken,
+  templateId,
+  { name, description, notes }
+) {
+  const normalizedTemplateId = String(templateId || "").trim();
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  const payload = {};
+
+  if (name !== undefined) {
+    const normalizedName = String(name).trim();
+
+    if (!normalizedName) {
+      throw new Error("Il nome del template non può essere vuoto");
+    }
+
+    payload.name = normalizedName;
+  }
+
+  if (description !== undefined) {
+    const normalizedDescription = String(description || "").trim();
+    payload.description = normalizedDescription || null;
+  }
+
+  if (notes !== undefined) {
+    const normalizedNotes = String(notes || "").trim();
+    payload.notes = normalizedNotes || null;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new Error("Devi modificare almeno un campo");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore aggiornamento template");
+  }
+
+  return data;
+}
 
 /**
  * Preconditions: accessToken must be valid and templateId must be a non-empty string.

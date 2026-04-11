@@ -1,9 +1,9 @@
 /**
  * Purpose: Main frontend container for authentication and technical meal plan template exploration flows.
  * Direct dependencies: React state, CSS, auth form component, templates list component, template detail component, API client.
- * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form and detail states.
+ * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form and detail states.
  * Security: Handles access token in local component state only; sends it to protected backend endpoints through the API client.
- * Notes: This prototype intentionally keeps auth, list, selection, create and delete state centralized here to make the flow easy to verify step by step.
+ * Notes: This prototype intentionally keeps auth, list, selection, create, update and delete state centralized here to make the flow easy to verify step by step.
  */
 
 import { useState } from "react";
@@ -18,6 +18,7 @@ import {
   fetchMealPlanTemplateFull,
   fetchMealPlanTemplates,
   loginWithPassword,
+  updateMealPlanTemplate,
 } from "./services/api.js";
 
 export default function App() {
@@ -33,6 +34,10 @@ export default function App() {
   const [newTemplateName, setNewTemplateName] = useState("");
   const [newTemplateDescription, setNewTemplateDescription] = useState("");
   const [newTemplateNotes, setNewTemplateNotes] = useState("");
+
+  const [editTemplateName, setEditTemplateName] = useState("");
+  const [editTemplateDescription, setEditTemplateDescription] = useState("");
+  const [editTemplateNotes, setEditTemplateNotes] = useState("");
 
   /**
    * Preconditions: the form submit event must come from the login form.
@@ -70,6 +75,9 @@ export default function App() {
       setTemplates(items);
       setSelectedTemplateDetail(null);
       setSelectedTemplateId("");
+      setEditTemplateName("");
+      setEditTemplateDescription("");
+      setEditTemplateNotes("");
       setStatus("Template caricati");
     } catch (error) {
       setStatus(`Errore caricamento template: ${String(error)}`);
@@ -93,6 +101,9 @@ export default function App() {
     try {
       const detail = await fetchMealPlanTemplateFull(accessToken, templateId);
       setSelectedTemplateDetail(detail);
+      setEditTemplateName(detail.name || "");
+      setEditTemplateDescription(detail.description || "");
+      setEditTemplateNotes(detail.notes || "");
       setStatus("Dettaglio template caricato");
     } catch (error) {
       setStatus(`Errore caricamento dettaglio: ${String(error)}`);
@@ -133,6 +144,9 @@ export default function App() {
 
       const detail = await fetchMealPlanTemplateFull(accessToken, createdTemplate.id);
       setSelectedTemplateDetail(detail);
+      setEditTemplateName(detail.name || "");
+      setEditTemplateDescription(detail.description || "");
+      setEditTemplateNotes(detail.notes || "");
 
       setNewTemplateName("");
       setNewTemplateDescription("");
@@ -140,6 +154,51 @@ export default function App() {
       setStatus("Template creato e caricato");
     } catch (error) {
       setStatus(`Errore creazione template: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Preconditions:
+   * - accessToken must be available.
+   * - selectedTemplateId must identify an existing template in the current org.
+   * Side effects:
+   * - performs update + list refresh + detail read API calls
+   * - rewrites edit state with the canonical backend response
+   * Expected errors: missing auth token, no selected template, local validation errors, network errors, non-ok API responses.
+   */
+  async function handleUpdateTemplate(event) {
+    event.preventDefault();
+
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setStatus("Seleziona prima un template");
+      return;
+    }
+
+    setStatus("Aggiornamento template in corso...");
+
+    try {
+      await updateMealPlanTemplate(accessToken, selectedTemplateId, {
+        name: editTemplateName,
+        description: editTemplateDescription,
+        notes: editTemplateNotes,
+      });
+
+      const items = await fetchMealPlanTemplates(accessToken);
+      setTemplates(items);
+
+      const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
+      setSelectedTemplateDetail(detail);
+      setEditTemplateName(detail.name || "");
+      setEditTemplateDescription(detail.description || "");
+      setEditTemplateNotes(detail.notes || "");
+      setStatus("Template aggiornato");
+    } catch (error) {
+      setStatus(`Errore aggiornamento template: ${String(error)}`);
     }
   }
 
@@ -177,6 +236,9 @@ export default function App() {
       if (selectedTemplateId === templateId) {
         setSelectedTemplateId("");
         setSelectedTemplateDetail(null);
+        setEditTemplateName("");
+        setEditTemplateDescription("");
+        setEditTemplateNotes("");
       }
 
       setStatus("Template eliminato");
@@ -195,7 +257,8 @@ export default function App() {
           <h1 className="app-title">Esplora template</h1>
           <p className="app-subtitle">
             Area tecnica di lettura per verificare login, lista template,
-            creazione metadata, eliminazione e dettaglio completo del template.
+            creazione metadata, aggiornamento, eliminazione e dettaglio completo
+            del template.
           </p>
         </div>
 
@@ -315,7 +378,17 @@ export default function App() {
           onDeleteTemplate={handleDeleteTemplate}
         />
 
-        <TemplateDetail template={selectedTemplateDetail} />
+        <TemplateDetail
+          template={selectedTemplateDetail}
+          isAuthenticated={isAuthenticated}
+          editName={editTemplateName}
+          editDescription={editTemplateDescription}
+          editNotes={editTemplateNotes}
+          onEditNameChange={setEditTemplateName}
+          onEditDescriptionChange={setEditTemplateDescription}
+          onEditNotesChange={setEditTemplateNotes}
+          onSubmitEdit={handleUpdateTemplate}
+        />
       </section>
 
       {showToken ? (
