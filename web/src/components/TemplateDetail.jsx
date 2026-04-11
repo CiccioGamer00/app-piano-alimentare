@@ -1,5 +1,5 @@
 /**
- * Purpose: Presentational component for rendering one full meal plan template tree, its metadata edit form, the day creation form and the meal creation form.
+ * Purpose: Presentational component for rendering one full meal plan template tree, its metadata edit form, the day creation form, the meal creation form and the item creation form.
  * Direct dependencies: React.
  * Inputs/Outputs: receives the selected full template DTO plus edit/create form state and callbacks from parent and renders nested days, meals and items.
  * Security: UI-only component; no direct API calls or credential handling here.
@@ -28,7 +28,25 @@ export default function TemplateDetail({
   onNewMealLabelChange,
   onNewMealSortOrderChange,
   onSubmitCreateMeal,
+  newItemDayId,
+  newItemMealId,
+  newItemText,
+  newItemQuantityText,
+  newItemNotes,
+  newItemSortOrder,
+  onNewItemDayIdChange,
+  onNewItemMealIdChange,
+  onNewItemTextChange,
+  onNewItemQuantityTextChange,
+  onNewItemNotesChange,
+  onNewItemSortOrderChange,
+  onSubmitCreateItem,
 }) {
+  const selectedItemDay =
+    template?.days.find((day) => day.id === newItemDayId) || null;
+
+  const availableMealsForSelectedDay = selectedItemDay?.meals || [];
+
   return (
     <section className="panel">
       <h2 className="panel-title">Dettaglio template</h2>
@@ -227,6 +245,138 @@ export default function TemplateDetail({
                   disabled={!isAuthenticated || template.days.length === 0}
                 >
                   Aggiungi pasto
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div>
+            <h3 className="subsection-title">Aggiungi item</h3>
+
+            <form onSubmit={onSubmitCreateItem}>
+              <div className="field">
+                <label className="field-label" htmlFor="new-item-day-id">
+                  Giorno
+                </label>
+                <select
+                  className="field-input"
+                  id="new-item-day-id"
+                  value={newItemDayId}
+                  onChange={(event) => onNewItemDayIdChange(event.target.value)}
+                  disabled={!isAuthenticated || template.days.length === 0}
+                >
+                  <option value="">Seleziona un giorno</option>
+
+                  {template.days.map((day) => (
+                    <option key={day.id} value={day.id}>
+                      {day.dayLabel} (sortOrder: {day.sortOrder})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="new-item-meal-id">
+                  Pasto
+                </label>
+                <select
+                  className="field-input"
+                  id="new-item-meal-id"
+                  value={newItemMealId}
+                  onChange={(event) => onNewItemMealIdChange(event.target.value)}
+                  disabled={
+                    !isAuthenticated || availableMealsForSelectedDay.length === 0
+                  }
+                >
+                  <option value="">Seleziona un pasto</option>
+
+                  {availableMealsForSelectedDay.map((meal) => (
+                    <option key={meal.id} value={meal.id}>
+                      {meal.mealLabel} (sortOrder: {meal.sortOrder})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="new-item-text">
+                  Testo item
+                </label>
+                <input
+                  className="field-input"
+                  id="new-item-text"
+                  type="text"
+                  value={newItemText}
+                  onChange={(event) => onNewItemTextChange(event.target.value)}
+                  disabled={
+                    !isAuthenticated || availableMealsForSelectedDay.length === 0
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="new-item-quantity-text">
+                  Quantità
+                </label>
+                <input
+                  className="field-input"
+                  id="new-item-quantity-text"
+                  type="text"
+                  value={newItemQuantityText}
+                  onChange={(event) =>
+                    onNewItemQuantityTextChange(event.target.value)
+                  }
+                  disabled={
+                    !isAuthenticated || availableMealsForSelectedDay.length === 0
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="new-item-notes">
+                  Note
+                </label>
+                <textarea
+                  className="field-input"
+                  id="new-item-notes"
+                  rows={3}
+                  value={newItemNotes}
+                  onChange={(event) => onNewItemNotesChange(event.target.value)}
+                  disabled={
+                    !isAuthenticated || availableMealsForSelectedDay.length === 0
+                  }
+                />
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="new-item-sort-order">
+                  Ordine
+                </label>
+                <input
+                  className="field-input"
+                  id="new-item-sort-order"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={newItemSortOrder}
+                  onChange={(event) =>
+                    onNewItemSortOrderChange(event.target.value)
+                  }
+                  disabled={
+                    !isAuthenticated || availableMealsForSelectedDay.length === 0
+                  }
+                />
+              </div>
+
+              <div className="session-actions">
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={
+                    !isAuthenticated || availableMealsForSelectedDay.length === 0
+                  }
+                >
+                  Aggiungi item
                 </button>
               </div>
             </form>

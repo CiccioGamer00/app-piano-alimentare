@@ -306,6 +306,75 @@ export async function createMealPlanTemplateMeal(
 
   return data;
 }
+/**
+ * Preconditions:
+ * - accessToken must be a valid bearer token string.
+ * - templateId, dayId and mealId must be non-empty strings.
+ * - itemText must be a non-empty string after trim.
+ * - sortOrder must be an integer greater than or equal to 0.
+ * Side effects: performs one network request to the meal plan template items create endpoint.
+ * Expected errors: throws Error when validation fails locally, when the HTTP response is not ok or when fetch fails.
+ */
+export async function createMealPlanTemplateItem(
+  accessToken,
+  templateId,
+  dayId,
+  mealId,
+  { itemText, quantityText, notes, sortOrder }
+) {
+  const normalizedTemplateId = String(templateId || "").trim();
+  const normalizedDayId = String(dayId || "").trim();
+  const normalizedMealId = String(mealId || "").trim();
+  const normalizedItemText = String(itemText || "").trim();
+  const normalizedQuantityText = String(quantityText || "").trim();
+  const normalizedNotes = String(notes || "").trim();
+  const normalizedSortOrder = Number(sortOrder);
+
+  if (!normalizedTemplateId) {
+    throw new Error("L'id del template è obbligatorio");
+  }
+
+  if (!normalizedDayId) {
+    throw new Error("L'id del giorno è obbligatorio");
+  }
+
+  if (!normalizedMealId) {
+    throw new Error("L'id del pasto è obbligatorio");
+  }
+
+  if (!normalizedItemText) {
+    throw new Error("Il testo dell'item è obbligatorio");
+  }
+
+  if (!Number.isInteger(normalizedSortOrder) || normalizedSortOrder < 0) {
+    throw new Error("L'ordine dell'item deve essere un intero maggiore o uguale a 0");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/v1/meal-plan-templates/${normalizedTemplateId}/days/${normalizedDayId}/meals/${normalizedMealId}/items`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        itemText: normalizedItemText,
+        quantityText: normalizedQuantityText || null,
+        notes: normalizedNotes || null,
+        sortOrder: normalizedSortOrder,
+      }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Errore creazione item");
+  }
+
+  return data;
+}
 
 /**
  * Preconditions: accessToken must be valid and templateId must be a non-empty string.

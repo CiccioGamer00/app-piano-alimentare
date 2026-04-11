@@ -1,7 +1,7 @@
 /**
  * Purpose: Main frontend container for authentication and technical meal plan template exploration flows.
  * Direct dependencies: React state, CSS, auth form component, templates list component, template detail component, API client.
- * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form, day creation form, meal creation form and detail states.
+ * Inputs/Outputs: receives user input events -> performs auth/template API calls -> renders session, list, create form, metadata edit form, day creation form, meal creation form, item creation form and detail states.
  * Security: Handles access token in local component state only; sends it to protected backend endpoints through the API client.
  * Notes: This prototype intentionally keeps auth, list, selection, create, update and delete state centralized here to make the flow easy to verify step by step.
  */
@@ -15,6 +15,7 @@ import {
   API_BASE,
   createMealPlanTemplate,
   createMealPlanTemplateDay,
+  createMealPlanTemplateItem,
   createMealPlanTemplateMeal,
   deleteMealPlanTemplate,
   fetchMealPlanTemplateFull,
@@ -47,6 +48,84 @@ export default function App() {
   const [newMealDayId, setNewMealDayId] = useState("");
   const [newMealLabel, setNewMealLabel] = useState("");
   const [newMealSortOrder, setNewMealSortOrder] = useState("0");
+
+  const [newItemDayId, setNewItemDayId] = useState("");
+  const [newItemMealId, setNewItemMealId] = useState("");
+  const [newItemText, setNewItemText] = useState("");
+  const [newItemQuantityText, setNewItemQuantityText] = useState("");
+  const [newItemNotes, setNewItemNotes] = useState("");
+  const [newItemSortOrder, setNewItemSortOrder] = useState("0");
+
+  function getDayById(detail, dayId) {
+    if (!detail || !Array.isArray(detail.days)) {
+      return null;
+    }
+
+    return detail.days.find((day) => day.id === dayId) || null;
+  }
+
+  function getMealById(detail, dayId, mealId) {
+    const day = getDayById(detail, dayId);
+
+    if (!day || !Array.isArray(day.meals)) {
+      return null;
+    }
+
+    return day.meals.find((meal) => meal.id === mealId) || null;
+  }
+
+  function resetItemForm() {
+    setNewItemDayId("");
+    setNewItemMealId("");
+    setNewItemText("");
+    setNewItemQuantityText("");
+    setNewItemNotes("");
+    setNewItemSortOrder("0");
+  }
+
+  function syncItemFormFromDetail(detail) {
+    const firstDayWithMeals =
+      detail?.days?.find((day) => Array.isArray(day.meals) && day.meals.length > 0) ||
+      null;
+
+    if (!firstDayWithMeals) {
+      resetItemForm();
+      return;
+    }
+
+    const firstMeal = firstDayWithMeals.meals[0];
+
+    setNewItemDayId(firstDayWithMeals.id);
+    setNewItemMealId(firstMeal.id);
+    setNewItemText("");
+    setNewItemQuantityText("");
+    setNewItemNotes("");
+    setNewItemSortOrder(String(firstMeal.items.length));
+  }
+
+  function handleNewMealDayIdChange(dayId) {
+    setNewMealDayId(dayId);
+
+    const selectedDay = getDayById(selectedTemplateDetail, dayId);
+    setNewMealSortOrder(String(selectedDay?.meals.length || 0));
+  }
+
+  function handleNewItemDayIdChange(dayId) {
+    setNewItemDayId(dayId);
+
+    const selectedDay = getDayById(selectedTemplateDetail, dayId);
+    const firstMeal = selectedDay?.meals[0] || null;
+
+    setNewItemMealId(firstMeal?.id || "");
+    setNewItemSortOrder(String(firstMeal?.items.length || 0));
+  }
+
+  function handleNewItemMealIdChange(mealId) {
+    setNewItemMealId(mealId);
+
+    const selectedMeal = getMealById(selectedTemplateDetail, newItemDayId, mealId);
+    setNewItemSortOrder(String(selectedMeal?.items.length || 0));
+  }
 
   /**
    * Preconditions: the form submit event must come from the login form.
@@ -92,6 +171,7 @@ export default function App() {
       setNewMealDayId("");
       setNewMealLabel("");
       setNewMealSortOrder("0");
+      resetItemForm();
       setStatus("Template caricati");
     } catch (error) {
       setStatus(`Errore caricamento template: ${String(error)}`);
@@ -128,6 +208,8 @@ export default function App() {
       setNewMealDayId(firstDayId);
       setNewMealLabel("");
       setNewMealSortOrder(String(firstDayMealsCount));
+
+      syncItemFormFromDetail(detail);
 
       setStatus("Dettaglio template caricato");
     } catch (error) {
@@ -177,6 +259,7 @@ export default function App() {
       setNewMealDayId("");
       setNewMealLabel("");
       setNewMealSortOrder("0");
+      resetItemForm();
 
       setNewTemplateName("");
       setNewTemplateDescription("");
@@ -259,7 +342,7 @@ export default function App() {
     setStatus("Creazione giorno in corso...");
 
     try {
-      await createMealPlanTemplateDay(accessToken, selectedTemplateId, {
+      const createdDay = await createMealPlanTemplateDay(accessToken, selectedTemplateId, {
         dayLabel: newDayLabel,
         sortOrder: newDaySortOrder,
       });
@@ -268,12 +351,18 @@ export default function App() {
       setSelectedTemplateDetail(detail);
       setNewDayLabel("");
       setNewDaySortOrder(String(detail.days.length));
+      setNewMealDayId(createdDay.id);
+      setNewMealSortOrder("0");
 
-      const lastCreatedDay = detail.days[detail.days.length - 1];
-      if (lastCreatedDay) {
-        setNewMealDayId(lastCreatedDay.id);
-        setNewMealSortOrder(String(lastCreatedDay.meals.length));
-      }
+      const createdDayFromDetail = getDayById(detail, createdDay.id);
+      setNewItemDayId(createdDay.id);
+      setNewItemMealId("");
+      setNewItemText("");
+      setNewItemQuantityText("");
+      setNewItemNotes("");
+      setNewItemSortOrder(
+        String(createdDayFromDetail?.meals[0]?.items.length || 0)
+      );
 
       setStatus("Giorno creato e caricato");
     } catch (error) {
@@ -313,7 +402,7 @@ export default function App() {
     setStatus("Creazione pasto in corso...");
 
     try {
-      await createMealPlanTemplateMeal(
+      const createdMeal = await createMealPlanTemplateMeal(
         accessToken,
         selectedTemplateId,
         newMealDayId,
@@ -326,13 +415,85 @@ export default function App() {
       const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
       setSelectedTemplateDetail(detail);
 
-      const selectedDay = detail.days.find((day) => day.id === newMealDayId);
+      const selectedDay = getDayById(detail, newMealDayId);
       setNewMealLabel("");
       setNewMealSortOrder(String(selectedDay?.meals.length || 0));
+
+      setNewItemDayId(newMealDayId);
+      setNewItemMealId(createdMeal.id);
+      setNewItemText("");
+      setNewItemQuantityText("");
+      setNewItemNotes("");
+      setNewItemSortOrder("0");
 
       setStatus("Pasto creato e caricato");
     } catch (error) {
       setStatus(`Errore creazione pasto: ${String(error)}`);
+    }
+  }
+
+  /**
+   * Preconditions:
+   * - accessToken must be available.
+   * - selectedTemplateId, newItemDayId and newItemMealId must identify existing resources in the current org.
+   * - newItemText must be non-empty and newItemSortOrder must be a valid integer >= 0.
+   * Side effects:
+   * - performs item create + detail read API calls
+   * - clears the item text fields on success
+   * - refreshes the selected template detail with the new nested item
+   * Expected errors: missing auth token, missing selected template/day/meal, local validation errors, network errors, non-ok API responses.
+   */
+  async function handleCreateItem(event) {
+    event.preventDefault();
+
+    if (!accessToken) {
+      setStatus("Devi prima fare login");
+      return;
+    }
+
+    if (!selectedTemplateId) {
+      setStatus("Seleziona prima un template");
+      return;
+    }
+
+    if (!newItemDayId) {
+      setStatus("Seleziona prima un giorno");
+      return;
+    }
+
+    if (!newItemMealId) {
+      setStatus("Seleziona prima un pasto");
+      return;
+    }
+
+    setStatus("Creazione item in corso...");
+
+    try {
+      await createMealPlanTemplateItem(
+        accessToken,
+        selectedTemplateId,
+        newItemDayId,
+        newItemMealId,
+        {
+          itemText: newItemText,
+          quantityText: newItemQuantityText,
+          notes: newItemNotes,
+          sortOrder: newItemSortOrder,
+        }
+      );
+
+      const detail = await fetchMealPlanTemplateFull(accessToken, selectedTemplateId);
+      setSelectedTemplateDetail(detail);
+
+      const selectedMeal = getMealById(detail, newItemDayId, newItemMealId);
+      setNewItemText("");
+      setNewItemQuantityText("");
+      setNewItemNotes("");
+      setNewItemSortOrder(String(selectedMeal?.items.length || 0));
+
+      setStatus("Item creato e caricato");
+    } catch (error) {
+      setStatus(`Errore creazione item: ${String(error)}`);
     }
   }
 
@@ -378,6 +539,7 @@ export default function App() {
         setNewMealDayId("");
         setNewMealLabel("");
         setNewMealSortOrder("0");
+        resetItemForm();
       }
 
       setStatus("Template eliminato");
@@ -397,7 +559,7 @@ export default function App() {
           <p className="app-subtitle">
             Area tecnica di lettura per verificare login, lista template,
             creazione metadata, aggiornamento, eliminazione, creazione giorni,
-            creazione pasti e dettaglio completo del template.
+            creazione pasti, creazione item e dettaglio completo del template.
           </p>
         </div>
 
@@ -535,10 +697,23 @@ export default function App() {
           newMealDayId={newMealDayId}
           newMealLabel={newMealLabel}
           newMealSortOrder={newMealSortOrder}
-          onNewMealDayIdChange={setNewMealDayId}
+          onNewMealDayIdChange={handleNewMealDayIdChange}
           onNewMealLabelChange={setNewMealLabel}
           onNewMealSortOrderChange={setNewMealSortOrder}
           onSubmitCreateMeal={handleCreateMeal}
+          newItemDayId={newItemDayId}
+          newItemMealId={newItemMealId}
+          newItemText={newItemText}
+          newItemQuantityText={newItemQuantityText}
+          newItemNotes={newItemNotes}
+          newItemSortOrder={newItemSortOrder}
+          onNewItemDayIdChange={handleNewItemDayIdChange}
+          onNewItemMealIdChange={handleNewItemMealIdChange}
+          onNewItemTextChange={setNewItemText}
+          onNewItemQuantityTextChange={setNewItemQuantityText}
+          onNewItemNotesChange={setNewItemNotes}
+          onNewItemSortOrderChange={setNewItemSortOrder}
+          onSubmitCreateItem={handleCreateItem}
         />
       </section>
 
